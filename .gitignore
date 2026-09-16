@@ -1,0 +1,23 @@
+# Local editor/agent state (contains absolute paths and machine-specific ids)
+.freebuff/
+
+# Local test harness. Its strongest fixtures are rebuilt from a saved copy of a
+# real gradebook page, so they hold a student id, a district portal domain, a
+# teacher name and real assignment scores. Keep the suite on this machine.
+mktest.js
+make-real-fixture.js
+test-gradebook*.html
+test-empty.html
+test-run*.html
+
+# Build intermediates. `node build.js` regenerates both from bookmarklet.js.
+bookmarklet.min.js
+bookmarklet.raw.txt
+
+# Local design notes, kept on disk only
+design-system/
+
+# OS noise
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>VuePoint</title>
+<meta name="description" content="VuePoint is a bookmarklet for StudentVUE. It calculates hypothetical grades: change a score or add an assignment and see what the total would be. No login, nothing saved."/>
+<meta name="color-scheme" content="light"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230D9488'/%3E%3Cpath d='M9.5 16.2l4.2 4.2 9.2-9.4' stroke='white' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--primary:#0D9488;--primary-dark:#0F766E;--secondary:#14B8A6;--accent:#EA580C;--bg:#F0FDFA;--bg-alt:#FFFFFF;--fg:#134E4A;--card:#FFFFFF;--muted:#E8F1F4;--muted-fg:#475569;--border:#99F6E4;--border-neutral:#E2E8F0;--destructive:#DC2626}
+  *,*::before,*::after{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg);line-height:1.5;font-size:16px}
+  a{color:inherit;text-decoration:none}.wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+  header{position:sticky;top:0;z-index:30;background:rgba(240,253,250,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+  .nav{height:52px;display:flex;align-items:center;gap:10px}
+  .logo-icon{width:28px;height:28px;border-radius:50%;background:var(--primary);display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px}
+  .logo-icon svg{width:15px;height:15px;display:block}
+  .brand{font-weight:800;font-size:17px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
+  .nav-links{margin-left:auto;display:flex;gap:20px;align-items:center;font-weight:600;font-size:13px;color:var(--muted-fg)}
+  .nav-links a:hover{color:var(--fg)}
+  .hero{background:var(--bg-alt);padding:30px 0 28px}
+  .hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;padding:16px 0}
+  .eyebrow{display:inline-flex;align-items:center;gap:6px;background:var(--muted);border:1px solid var(--border);padding:5px 10px;border-radius:4px;font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--primary-dark)}
+  .eyebrow svg{width:14px;height:14px;flex:0 0 14px;display:block}
+  h1{font-size:clamp(28px,4.5vw,44px);line-height:1.05;letter-spacing:-.03em;margin:12px 0 10px;font-weight:800}
+  h1 span{color:var(--primary)}
+  .sub{font-size:15px;color:var(--muted-fg);max-width:48ch;line-height:1.55}
+  .sub b{color:var(--fg);font-weight:600}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .chip{font-size:12px;font-weight:600;padding:5px 10px;border-radius:4px;background:var(--muted);border:1px solid var(--border);color:var(--primary-dark);display:inline-flex;align-items:center;gap:5px}
+  .chip svg{width:14px;height:14px;flex:0 0 14px}
+  .install-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative}
+  .install-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:10px}
+  .drag-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--primary-dark);color:#fff;padding:14px 24px;border-radius:8px;font-weight:700;font-size:16px;border:none;cursor:grab;transition:opacity .15s}
+  .drag-btn:hover{opacity:.88}
+  .drag-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .drag-btn svg{width:22px;height:22px;flex:0 0 22px}
+  .hint-box{margin-top:12px;background:var(--bg);border:1px solid var(--border-neutral);border-radius:8px;padding:12px;font-size:13px;color:var(--muted-fg);line-height:1.5}
+  .hint-box b{color:var(--fg);font-weight:600}
+  .hint-box kbd{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--card);border:1px solid var(--border-neutral);border-bottom-width:2px;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:700}
+  .hint-actions{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .hint-actions button{border:1px solid var(--border-neutral);background:var(--card);padding:6px 10px;border-radius:6px;font-weight:600;font-size:12px;cursor:pointer;color:var(--fg);font-family:inherit;transition:opacity .15s}
+  .hint-actions button:hover{opacity:.75}
+  .hint-actions span{font-size:11px;color:var(--muted-fg)}
+  .warn{margin-top:10px;display:flex;gap:8px;align-items:flex-start;background:#FFFBEB;border:1px solid #FDE68A;color:#92400E;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5}
+  .warn svg{width:16px;height:16px;flex:0 0 16px;margin-top:1px}
+  section{padding:22px 0}
+  .sec-head{margin-bottom:20px}
+  .sec-head h2{font-size:24px;letter-spacing:-.025em;margin:0;font-weight:800}
+  .sec-head p{color:var(--muted-fg);margin:4px 0 0;max-width:52ch;font-size:14px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .step{background:var(--card);border:1px solid var(--border-neutral);border-radius:10px;padding:20px}
+  .step-num{width:28px;height:28px;border-radius:6px;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+  .step h3{margin:12px 0 8px;font-size:14px;font-weight:700}
+  .step p{margin:0;color:var(--muted-fg);font-size:13px;line-height:1.6}
+  .step .vis{margin-top:14px;background:var(--bg);border:1px solid var(--border-neutral);border-radius:6px;padding:12px;min-height:72px;display:grid;place-items:center;overflow:hidden}
+  .step .vis-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted-fg)}
+  .divider-wrap{max-width:1040px;margin:10px auto;padding:0 24px}
+  .section-divider{border:0;border-top:1px solid var(--border-neutral);margin:0;width:100%}
+  .features{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .feat{background:var(--card);border:1px solid var(--border-neutral);border-radius:10px;padding:14px}
+  .feat-icon{width:32px;height:32px;border-radius:6px;background:var(--muted);border:1px solid var(--border);display:grid;place-items:center;color:var(--primary)}
+  .feat-icon svg{width:18px;height:18px}
+  .feat h3{margin:8px 0 4px;font-size:13px;font-weight:700}
+  .feat p{margin:0;color:var(--muted-fg);font-size:12.5px;line-height:1.5}
+  .demo-wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;align-items:start}
+  .demo-card{background:var(--card);border:1px solid var(--border-neutral);border-radius:10px;overflow:hidden}
+  .demo-bar{background:#134E4A;color:#fff;padding:8px 12px;font-weight:700;font-size:12px;display:flex;align-items:center;gap:8px}
+  .demo-bar .dots{display:flex;gap:4px}
+  .demo-bar .dots span{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25)}
+  .demo-bar .dots span:first-child{background:#DC2626}
+  .demo-bar .dots span:nth-child(2){background:#F59E0B}
+  .demo-body{padding:12px;font-size:12px}
+  .mock-tbl{width:100%;border-collapse:collapse;font-size:11px}
+  .mock-tbl th{text-align:left;font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted-fg);padding:6px;border-bottom:1px solid var(--border-neutral);background:var(--bg)}
+  .mock-tbl td{padding:5px 6px;border-bottom:1px solid #f0fdfa}
+  .demo-cta{background:var(--muted);border:1px solid var(--border);border-radius:10px;padding:14px}
+  .demo-cta h3{margin:0 0 8px;font-size:14px;font-weight:700}
+  .demo-cta ol{margin:0;padding-left:16px;color:var(--muted-fg);font-size:13px;line-height:1.7}
+  .demo-cta a{display:inline-flex;align-items:center;gap:6px;background:var(--primary-dark);color:#fff;padding:8px 14px;border-radius:6px;font-weight:700;font-size:13px;transition:opacity .15s;margin-top:10px}
+  .demo-cta a:hover{opacity:.88}
+  .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .faq{background:var(--card);border:1px solid var(--border-neutral);border-radius:10px;padding:14px}
+  .faq h3{margin:0 0 6px;font-size:13px;font-weight:700;display:flex;gap:8px;align-items:center}
+  .faq h3 svg{width:20px;height:20px;flex:0 0 20px;color:var(--primary)}
+  .faq p{margin:0;color:var(--muted-fg);font-size:12.5px;line-height:1.55}
+  .credit{border-top:1px solid var(--border-neutral);background:linear-gradient(180deg,#f5fdfb,#fff);padding:16px 0;text-align:center;color:var(--muted-fg);font-size:12.5px}
+  .credit b{color:var(--primary-dark);font-weight:700}
+  .desk-note{display:flex;gap:8px;align-items:flex-start;background:var(--muted);border:1px solid var(--border);color:var(--primary-dark);padding:9px 11px;border-radius:8px;font-size:12px;line-height:1.45;font-weight:600;margin-bottom:12px}
+  .desk-note svg{width:16px;height:16px;flex:0 0 16px;margin-top:1px}
+  .desk-note b{font-weight:800}
+  footer{border-top:1px solid var(--border-neutral);background:var(--card);padding:20px 0 24px;color:var(--muted-fg);font-size:12px}
+  .footer-row{display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+  @media(max-width:920px){.hero-grid,.demo-wrap{grid-template-columns:1fr}.steps{grid-template-columns:1fr}.features{grid-template-columns:1fr 1fr}.faq-grid{grid-template-columns:1fr}.hero-grid{gap:22px}.hero{padding:26px 0 24px}}
+  @media(max-width:640px){
+    .wrap{padding:0 16px}
+    .hero{padding:20px 0 18px}
+    .hero-grid{gap:18px;padding:8px 0}
+    h1{font-size:clamp(26px,7.4vw,32px);margin:10px 0 8px}
+    .sub{font-size:14.5px}
+    section{padding:18px 0}
+    .sec-head{margin-bottom:16px}
+    .sec-head h2{font-size:20px}
+    .sec-head p{font-size:13.5px}
+    .install-card{padding:16px}
+    .drag-btn{font-size:15px;padding:13px 18px;gap:8px}
+    .hint-box,.warn{font-size:12.5px;padding:11px}
+    .steps{gap:12px}
+    .step{padding:16px}
+    .step .vis{padding:10px;min-height:64px}
+    .features{gap:10px}
+    .feat{padding:13px}
+    .faq{padding:13px}
+    .faq h3{align-items:flex-start;gap:7px}
+    .faq h3 svg{margin-top:1px}
+    .faq-grid{gap:10px}
+    .demo-wrap{gap:12px}
+    .demo-body{padding:10px}
+    .demo-bar{padding:7px 10px}
+    .mock-head{flex-wrap:wrap;gap:6px}
+    .mock-tbl th,.mock-tbl td{padding:5px}
+    .demo-cta{padding:13px}
+    .credit{font-size:12px;padding:14px 0}
+    footer{padding:18px 0 22px}
+    .footer-row{flex-direction:column;align-items:flex-start;gap:7px;text-align:left}
+    .hint-box,.warn,.desk-note,.demo-body{overflow-wrap:anywhere}
+    .dragging-hint{max-width:calc(100vw - 32px)}
+  }
+  @media(max-width:480px){
+    .nav-links{gap:12px;font-size:12px}
+    .brand{font-size:16px}
+    .features{grid-template-columns:1fr}
+    .chip{font-size:11.5px;padding:5px 9px}
+    .chips{gap:6px}
+    .vis-row{flex-wrap:wrap;gap:6px}
+    .step p{font-size:12.5px}
+    .step h3{font-size:13.5px}
+    .mock-tbl{font-size:10.5px}
+  }
+  @media(max-width:400px){
+    .nav-links{display:none}
+    .wrap{padding:0 14px}
+    .drag-btn{font-size:14px;padding:12px 14px}
+    .hint-box kbd{padding:1px 4px;font-size:11px}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <div class="brand">
+      <span class="logo-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 12.2 10.3 16 17.5 8"/></svg></span>
+      VuePoint
+    </div>
+    <nav class="nav-links" aria-label="Primary"><a href="#install">Install</a><a href="#use">How to use</a><a href="#features">Features</a><a href="#faq">FAQ</a></nav>
+  </div>
+</header>
+<div class="hero"><div class="wrap"><div class="hero-grid">
+  <div>
+    <div class="eyebrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M5.5 8.2L7.2 10 11 6"/></svg> No login · No extension · 100% local</div>
+    <h1>Calculate hypothetical grades <span>on StudentVUE</span></h1>
+    <p class="sub">A lightweight tool for calculating hypothetical grades. Change a score, or add an assignment you have not turned in yet, and the total updates as you type. Nothing is saved or sent anywhere.</p>
+    <div class="chips">
+      <span class="chip"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M5.5 8.2L7.2 10 11 6"/></svg> Runs 100% locally</span>
+      <span class="chip"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M5.5 8.2L7.2 10 11 6"/></svg> Weighted + total points</span>
+      <span class="chip"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M5.5 8.2L7.2 10 11 6"/></svg> Nothing is saved</span>
+    </div>
+  </div>
+  <div class="install-card" id="install">
+    <div class="install-label">Drag to your Bookmarks Bar</div>
+    <div class="desk-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><div><b>Computers only.</b> VuePoint runs from a browser's Bookmarks Bar, so it needs a laptop, desktop, or Chromebook. Phones and tablets can't run a bookmark like this.</div></div>
+    <a id="vuepoint-bookmarklet" class="drag-btn" href="#" draggable="true" title="VuePoint" aria-label="VuePoint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M7 12.5L10.5 16L17 9"/></svg>
+      VuePoint
+    </a>
+    <div class="hint-box"><b>Click and hold</b> the button above, drag it to your Bookmarks Bar, and release.<br>Don't see the bar? Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> (or <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> on Mac).
+      <div class="hint-actions"><button id="copy-link">Copy link</button><span id="copy-status"></span></div>
+    </div>
+    <div class="warn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM8 5v3.5M8 10.5v.01"/></svg><div><b>Can't drag?</b> Right-click the button → <b>Copy link address</b> → create a bookmark (<kbd>Ctrl</kbd> + <kbd>D</kbd>), paste the link as the <b>URL</b>. Name it "VuePoint".</div></div>
+  </div>
+</div></div></div>  <div class="divider-wrap"><hr class="section-divider"/></div>
+<section id="use" style="padding:22px 0"><div class="wrap">
+  <div class="sec-head"><h2>Install on a computer in 45 seconds</h2><p>Laptop, desktop, or Chromebook. Phones and tablets can't run a bookmarklet, so use a computer for this part.</p></div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><h3>Show your Bookmarks Bar</h3><p>Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> (Chromebook & Windows) or <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> (Mac).</p>
+      <div class="vis"><div style="width:100%;border:1px solid var(--border-neutral);border-radius:6px;overflow:hidden;background:#fff"><div style="height:26px;background:var(--muted);border-bottom:1px solid var(--border-neutral);display:flex;align-items:center;gap:4px;padding:0 8px;font-size:10px;color:var(--muted-fg)"><span style="width:7px;height:7px;border-radius:50%;background:#DC2626"></span><span style="width:7px;height:7px;border-radius:50%;background:#F59E0B"></span><span style="width:7px;height:7px;border-radius:50%;background:#22C55E"></span><span style="margin-left:8px;background:#fff;border:1px solid var(--border-neutral);padding:2px 6px;border-radius:3px">studentvue</span></div><div style="height:24px;background:var(--bg);border-bottom:1px dashed var(--border);display:flex;align-items:center;gap:6px;padding:0 8px;font-size:10px"><span style="color:var(--primary);font-weight:700">★ Bookmarks Bar</span><span style="background:var(--muted);border:1px solid var(--border);padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;color:var(--fg)">VuePoint goes here →</span></div></div></div>
+    </div>
+    <div class="step"><div class="step-num">2</div><h3>Drag VuePoint to the bar</h3><p>Click-and-hold the <b>VuePoint</b> button above, drag it up to the Bookmarks Bar, and release.</p>
+      <div class="vis"><div class="vis-row"><span style="background:var(--primary-dark);color:#fff;padding:6px 10px;border-radius:6px;font-weight:700;font-size:12px">VuePoint</span> <span style="color:var(--primary);font-weight:700">drag →</span> <span style="background:var(--muted);border:1px solid var(--border);padding:5px 8px;border-radius:4px;font-weight:600;color:var(--fg);font-size:11px">★ Bookmarks Bar</span></div></div>
+      <p style="margin-top:8px;font-size:11px;color:var(--muted-fg)">Hold <kbd>Ctrl</kbd> while dragging if Chrome tries to open a new tab.</p>
+    </div>
+    <div class="step"><div class="step-num">3</div><h3>Open StudentVUE → click the bookmark</h3><p>Go to <b>StudentVUE → Grade Book → pick a class</b> with scores visible, then click <b>VuePoint</b> in your bookmarks.</p>
+      <div class="vis"><div style="width:100%;text-align:left;font-size:11px;line-height:1.4"><div style="background:#134E4A;color:#fff;padding:6px 8px;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M7 12.5L10.5 16L17 9"/></svg> VuePoint</div><div style="background:#fff;border:1px solid var(--border-neutral);border-top:0;border-radius:0 0 6px 6px;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px"><div style="font-size:9px;font-weight:600;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.05em">Projected</div><div style="font-size:16px;font-weight:800;color:var(--primary)">88.0% B</div></div><div style="background:var(--muted);border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px;color:var(--fg)"><b>+1.0%</b> vs original</div></div></div></div>
+      <p style="margin-top:8px;font-size:11px;color:var(--muted-fg)">Click the bookmark again, or press ✕, to close it.</p>
+    </div>
+  </div>
+</div></section>  <div class="divider-wrap"><hr class="section-divider"/></div>
+<section style="padding:22px 0"><div class="wrap">
+  <div class="sec-head"><h2 id="features">What you can do</h2><p>Everything runs locally. No logins, no servers, no extension needed.</p></div>
+  <div class="features">
+    <div class="feat"><div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><h3>Edit any score</h3><p>Change a score and your overall percent updates as you type.</p></div>
+    <div class="feat"><div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><h3>Add hypotheticals</h3><p>"What if I get 45/50 on the final?" Add a row and see the impact.</p></div>
+    <div class="feat"><div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/></svg></div><h3>Weighted or total</h3><p>Detects your grading mode, and you can switch it yourself. Category weights are editable.</p></div>
+    <div class="feat"><div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div><h3>Private by design</h3><p>No data leaves your tab. Refresh and it all disappears.</p></div>
+  </div>
+  <div class="demo-wrap" style="margin-top:16px">
+    <div class="demo-card"><div class="demo-bar"><span class="dots"><span></span><span></span><span></span></span> StudentVUE Grade Book</div><div class="demo-body">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px" class="mock-head"><div style="font-weight:700;font-size:13px">BIOLOGY - PERIOD 3</div><div style="background:var(--muted);border:1px solid var(--border);padding:3px 8px;border-radius:4px;font-weight:700;color:var(--fg);font-size:12px">87.00% B+</div></div>
+      <table class="mock-tbl"><thead><tr><th>Assignment</th><th>Category</th><th>Score</th></tr></thead><tbody><tr><td>Lab: Mitosis</td><td>Lab</td><td>27 / 30</td></tr><tr><td>Homework 4.2</td><td>Homework</td><td>18 / 20</td></tr><tr><td>Unit Test</td><td>Tests</td><td>42 / 50</td></tr><tr style="background:var(--muted);border-left:3px solid var(--primary)"><td style="font-weight:700;color:var(--primary)">+ Final Essay</td><td>Tests</td><td>45 / 50</td></tr></tbody></table>
+      <div style="margin-top:8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px"><span style="color:var(--muted-fg)">VuePoint recalculates live</span><span style="font-weight:800;color:var(--primary)">88.00% B+ ▲</span></div>
+    </div></div>
+    <div class="demo-cta"><h3>Try it now</h3><ol><li>Install the bookmark above (one-time).</li><li>Open any StudentVUE class with scores visible.</li><li>Click <b>VuePoint</b> in your Bookmarks Bar.</li><li>Add a hypothetical or edit a score and watch it update.</li></ol><p style="margin:8px 0 0;color:var(--muted-fg);font-size:12px;line-height:1.5">Handles <b>weighted categories</b> and <b>total-points</b> classes. Drag the panel anywhere, or close it with ✕. Click the bookmark again anytime.</p><a href="#install">Get VuePoint</a></div>
+  </div>
+</div></section>
+<div class="divider-wrap"><hr class="section-divider"/></div>
+<section id="faq" style="padding:22px 0 28px"><div class="wrap"><div class="sec-head"><h2>Frequently asked questions</h2></div>
+  <div class="faq-grid">
+    <div class="faq"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Can I use it on my phone or tablet?</h3><p><b>No.</b> VuePoint is a bookmarklet, and it needs a bookmarks bar to run from. That means a laptop, desktop, or Chromebook.</p></div>    <div class="faq"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Button opens a page instead of adding a bookmark</h3><p>You clicked instead of dragged. <b>Click-and-hold</b>, drag to the Bookmarks Bar, release.</p></div>
+    <div class="faq"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> School blocked drag-and-drop?</h3><p>Use <b>Copy link</b> → right-click Bookmarks Bar → <b>Add page…</b> → paste as URL.</p></div>
+    <div class="faq"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> I don't see the Bookmarks Bar</h3><p>Try <b>⋮ Menu → Bookmarks → Show bookmarks bar</b>. On Chromebooks, check <b>Appearance</b> in Settings.</p></div>
+    <div class="faq"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Will this change my real grade?</h3><p><b>Never.</b> VuePoint edits only the copy on your screen. Nothing is sent back to StudentVUE.</p></div>
+    <div class="faq"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18"/></svg> Weighted or total: which do I use?</h3><p>VuePoint detects it for you. If it guesses wrong, switch it yourself. Both percentages are shown.</p></div>
+    <div class="faq"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Does it need internet?</h3><p>No. The bookmarklet is self-contained and makes no network requests. It works offline once the gradebook has loaded.</p></div>
+  </div>
+  <div style="margin-top:14px;background:var(--muted);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 28px"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div style="font-size:12.5px;line-height:1.55;color:var(--fg)"><b>Teacher or IT admin?</b> VuePoint reads the gradebook already open in your window, the same rows your browser rendered, and works out the scores and category weights from them locally. Nothing is sent anywhere.</div></div>
+</div></section>
+<div class="credit"><div class="wrap">Made by <b>Vansh Agarwal</b></div></div>
+<footer><div class="wrap footer-row"><div><b style="color:var(--fg)">VuePoint</b> is a StudentVUE gradebook helper. Not affiliated with Edupoint / Synergy. <span style="border:1px solid var(--border-neutral);background:var(--muted);padding:1px 5px;border-radius:3px;font-size:10px">v1.1 · no backend · no tracking</span></div><div><span>Install above, then open any <b>StudentVUE Grade Book</b> page</span></div></div></footer>
+<script>
+(function(){
+  /* The bookmarklet URL lives in the button's href attribute (set at build time),
+     so dragging the button onto the Bookmarks Bar works with no JavaScript. */
+  var a=document.getElementById('vuepoint-bookmarklet');
+  if(!a)return;
+  var cb=document.getElementById('copy-link'),st=document.getElementById('copy-status');
+  function feedback(ok){
+    if(st)st.textContent=ok?'Copied to clipboard':'Could not copy. Right-click the button and choose "Copy link address"';
+    if(cb){cb.textContent=ok?'Copied!':'Copy failed';setTimeout(function(){cb.textContent='Copy link';},2400);}
+  }
+  function legacyCopy(text){
+    try{
+      var t=document.createElement('textarea');
+      t.value=text;t.setAttribute('readonly','');
+      t.style.cssText='position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(t);t.select();
+      var ok=document.execCommand('copy');
+      t.remove();feedback(ok);
+    }catch(e){feedback(false);}
+  }
+  if(cb)cb.addEventListener('click',function(){
+    var h=a.href;if(!h||h==='#')return;
+    /* clipboard.writeText rejects without user activation and in some
+       managed school profiles, so always fall back and always respond. */
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(h).then(function(){feedback(true);},function(){legacyCopy(h);});}
+    else{legacyCopy(h);}
+  });
+  a.addEventListener('click',function(e){
+    e.preventDefault();
+    var r=a.getBoundingClientRect(),d=document.createElement('div');
+    d.className='dragging-hint';
+    d.textContent="Drag me to your Bookmarks Bar. Then open StudentVUE and click the bookmark there.";
+    d.style.cssText='position:fixed;left:'+r.left+'px;top:'+(r.bottom+10)+'px;background:#134E4A;color:#fff;padding:10px 12px;border-radius:6px;font-size:12px;font-weight:600;max-width:min(380px,90vw);box-shadow:0 4px 6px rgba(0,0,0,.1);z-index:50';
+    document.body.appendChild(d);
+    setTimeout(function(){d.style.transition='opacity .2s';d.style.opacity='0';setTimeout(function(){d.remove();},220);},3000);
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+})();
+</script>
+</body>
+</html>
