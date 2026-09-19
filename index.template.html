@@ -35,10 +35,38 @@
   .chip svg{width:14px;height:14px;flex:0 0 14px}
   .install-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative}
   .install-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:10px}
-  .drag-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--primary-dark);color:#fff;padding:14px 24px;border-radius:8px;font-weight:700;font-size:16px;border:none;cursor:grab;transition:opacity .15s}
+  /* The button and its badge breathe on ONE clock: same keyframes, same
+     duration, no delay, so they can never drift apart.
+
+     Only the FILL scales. The text sits still above it, and that is deliberate:
+     a transform animation composited onto the element that holds the text is
+     what made both labels look hazy. The compositor re-rasterises that layer
+     and drops subpixel antialiasing, so the glyphs go soft. Animating a
+     backdrop instead keeps the shapes moving and the words exactly as sharp as
+     the words around them. */
+  .drag-wrap{position:relative;margin-top:16px}
+  .drag-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;background:transparent;color:#fff;padding:14px 24px;border-radius:8px;font-weight:700;font-size:16px;border:none;cursor:grab;transition:opacity .15s}
+  .drag-btn::before{content:"";position:absolute;inset:0;z-index:0;border-radius:inherit;background:var(--primary-dark);animation:drag-breathe 3.4s ease-in-out infinite}
+  .drag-btn>*{position:relative;z-index:1}
   .drag-btn:hover{opacity:.88}
+  .drag-btn:hover::before{animation-play-state:paused}
   .drag-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
   .drag-btn svg{width:22px;height:22px;flex:0 0 22px}
+  /* The badge sits beside the link, not inside it: a browser names a bookmarked
+     link after its text, so the words "Drag me" living inside the anchor made
+     the bookmark itself read "VuePoint drag me". Outside it, the bookmark reads
+     VuePoint, and the pill is free to be a scaled backdrop for the words.
+
+     White on the dark teal button rather than the orange accent: the badge is
+     part of this palette, and the accent read as a warning sticker dropped on
+     top of it. The teal hairline outlines the pill where it overhangs the
+     button onto the white card, so it keeps an edge against both. */
+  .drag-tag{position:absolute;top:-9px;right:12px;z-index:2;display:inline-flex;align-items:center;gap:5px;color:var(--primary-dark);font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;padding:4px 9px;white-space:nowrap;pointer-events:none;-webkit-user-select:none;user-select:none}
+  .drag-tag::before{content:"";position:absolute;inset:0;z-index:0;background:#fff;border:1px solid var(--primary);border-radius:99px;box-shadow:0 2px 8px rgba(15,118,110,.28);animation:drag-breathe 3.4s ease-in-out infinite}
+  .drag-tag>*{position:relative;z-index:1}
+  .drag-tag svg{width:11px;height:11px;flex:0 0 11px;display:block}
+  .drag-wrap:hover .drag-tag::before{animation-play-state:paused}
+  @keyframes drag-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
   .hint-box{margin-top:12px;background:var(--bg);border:1px solid var(--border-neutral);border-radius:8px;padding:12px;font-size:13px;color:var(--muted-fg);line-height:1.5}
   .hint-box b{color:var(--fg);font-weight:600}
   .hint-box kbd{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--card);border:1px solid var(--border-neutral);border-bottom-width:2px;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:700}
@@ -147,7 +175,7 @@
     .drag-btn{font-size:14px;padding:12px 14px}
     .hint-box kbd{padding:1px 4px;font-size:11px}
   }
-  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}*,*::before,*::after{animation:none!important}}
 </style>
 </head>
 <body>
@@ -174,10 +202,13 @@
   <div class="install-card" id="install">
     <div class="install-label">Drag to your Bookmarks Bar</div>
     <div class="desk-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><div><b>Computers only.</b> VuePoint runs from a browser's Bookmarks Bar, so it needs a laptop, desktop, or Chromebook. Phones and tablets can't run a bookmark like this.</div></div>
-    <a id="vuepoint-bookmarklet" class="drag-btn" href="#" draggable="true" title="VuePoint" aria-label="VuePoint">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M7 12.5L10.5 16L17 9"/></svg>
-      VuePoint
-    </a>
+    <div class="drag-wrap">
+      <a id="vuepoint-bookmarklet" class="drag-btn" href="#" draggable="true" title="VuePoint" aria-label="VuePoint. Drag this button to your Bookmarks Bar to install it.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M7 12.5L10.5 16L17 9"/></svg>
+        <span>VuePoint</span>
+      </a>
+      <span class="drag-tag" aria-hidden="true"><span>Drag me</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M9.5 7H17v7.5"/></svg></span>
+    </div>
     <div class="hint-box"><b>Click and hold</b> the button above, drag it to your Bookmarks Bar, and release.<br>Don't see the bar? Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> (or <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> on Mac).
       <div class="hint-actions"><button id="copy-link">Copy link</button><span id="copy-status"></span></div>
     </div>

@@ -1142,6 +1142,19 @@ function withPeriod(name,per){
   return name+' \u2014 PERIOD '+per;
 }
 
+/* The portal always has a homeroom class in its list and always writes that one
+   into the page's focus payload before a class has been picked, so its name is
+   on the page even when the student is looking at nothing. Naming it is what put
+   "ADVISORY" at the top of the panel with no class open. It is never the class
+   on screen, so it counts as no name at all. */
+function isPlaceholderClass(s){
+  var t=norm(s);
+  if(!t) return false;
+  if(/\b(advisor(?:y|ies)|homeroom)\b/i.test(t)) return true;
+  if(/SEC\s*[:.]\s*ADV\b/i.test(t)) return true;
+  return false;
+}
+
 function findCourse(docs){
   var candidates=[];
   for(var d=0;d<docs.length;d++){
@@ -1192,6 +1205,7 @@ function findCourse(docs){
     var cls=currentClassItem();
     if(!raw) raw=norm(koCall(cls,'Name')||'');
     if(raw==='&nbsp;') raw='';
+    if(isPlaceholderClass(raw)) raw='';
     if(!raw) return '';
     var nm=tidyCourseName(raw);
     if(!nm) return '';
@@ -1205,16 +1219,27 @@ function findCourse(docs){
 
   /* no model on the page: the class it was originally rendered with, then the
      markup. Both of these are guesses, so they come after the model. */
+  var frozen='';
   try{
     var FD=window.PXP&&window.PXP.GBFocusData;
     var nm0=FD&&FD.focus&&FD.focus.ClassName;
-    if(nm0&&norm(nm0).length>=3) return withPeriod(tidyCourseName(nm0),periodFromName(nm0));
+    if(nm0&&norm(nm0).length>=3) frozen=norm(nm0);
   }catch(e){}
+  if(frozen&&!isPlaceholderClass(frozen)) return withPeriod(tidyCourseName(frozen),periodFromName(frozen));
 
-  if(candidates.length){
-    candidates.sort(function(a,b){ return b.w-a.w; });
-    return withPeriod(tidyCourseName(candidates[0].t),periodFromName(candidates[0].t));
+  /* Markup the portal itself labelled as a course can still stand in for the
+     missing model. Bare headings cannot: the one heading on a real gradebook
+     page is the student's own name, and using it here is how a person's name
+     ended up in the header. */
+  var marked=[];
+  for(var mc=0;mc<candidates.length;mc++){ if(candidates[mc].w>=2) marked.push(candidates[mc]); }
+  if(marked.length){
+    marked.sort(function(a,b){ return b.w-a.w; });
+    return withPeriod(tidyCourseName(marked[0].t),periodFromName(marked[0].t));
   }
+  /* the payload named the advisory class, so the class on screen is unnamed:
+     saying nothing beats naming a homeroom the student is not looking at */
+  if(frozen) return '';
   var title=norm(document.title).replace(/\s*[|\u2013\u2014-]\s*StudentVUE.*$/i,'');
   return tidyCourseName(title);
 }
@@ -1237,17 +1262,37 @@ function gradedRow(a){
    been picked, and a class with nothing posted yet has no rows to parse either.
    The gradebook panels are the honest signal - they exist once a class is open,
    whether or not a single score has landed in it. */
-function gradebookOnPage(){
+/* Is this StudentVUE at all? The answer decides whether the panel offers a
+   gradebook read or the short walkthrough back to the gradebook, so it must not
+   be guesswork: every signal below is one the portal writes itself, and a page
+   that has none of them is not the portal. A district-hosted portal keeps its
+   hostname, and a saved or framed copy still carries the title, the ids, the
+   globals or the script names. */
+function looksLikeStudentVue(){
   try{
+    var host=String(location.hostname||'');
+    if(/edupoint\.com$/i.test(host)) return true;
+    if(/studentvue|parentvue/i.test(host)) return true;
+    if(/StudentVUE/i.test(String(document.title||''))) return true;
+    if(window.PXP) return true;
     if(document.getElementById('assignment-details')) return true;
     if(document.getElementById('CategoryWeights')) return true;
-    var h=document.querySelectorAll('h1,h2,h3,h4'), i;
-    for(i=0;i<h.length&&i<25;i++){
-      if(/^(assignments?|grade calculation summary)$/i.test(norm(h[i].textContent))) return true;
+    if(document.getElementById('ctl00_CategoryWeights')) return true;
+    if(document.querySelector('[id^="PXP2_"],[class*="PXP2_"]')) return true;
+    var sc=document.querySelectorAll('script[src]');
+    for(var i=0;i<sc.length&&i<80;i++){
+      if(/PXP2_|pxp\.gradebook|StudentVue/i.test(String(sc[i].getAttribute('src')||''))) return true;
     }
   }catch(e){}
   return false;
 }
+
+/* What used to sit here was a `gradebookOnPage()` test that read the gradebook
+   panels as proof a class was open. Synergy renders those panels as part of the
+   page template, before anything has been picked, so it said yes on the class
+   list too - which is how the advisory homeroom came to be named at the top of a
+   page with no class open. Whether a class is open now comes from the class the
+   portal names and from nothing else. */
 
 function parseAll(){
   var docs=collectDocs();
@@ -1357,6 +1402,7 @@ function parseAll(){
     originalPct:grade&&isFinite(grade.value)?grade.value:null,
     gradeInfo:grade,
     courseTitle:course,
+    onSV:looksLikeStudentVue(),
     meta:{
       docs:docs.length, frames:nFrames, blocked:BLOCKED_FRAMES.slice(0,6),
       tables:nTables, roleGrids:nRole, rowGroups:nGroups,
@@ -1382,7 +1428,7 @@ function run(){
   /* ---------- state ---------- */
   var state={
     list:[], weights:{}, mode:'total', original:null, found:false, open:false,
-    dirty:false, course:'', meta:{}, pendingRow:null
+    dirty:false, course:'', onSV:true, meta:{}, pendingRow:null
   };
 
   var docs=collectDocs();
@@ -1541,10 +1587,31 @@ function run(){
     '.vp-add input#vp-n{flex:1 1 96px;max-width:180px}',
     '.vp-add select{flex:0 1 118px}',
     '.vp-add input.n{flex:0 0 72px}',
-    '.vp-add>.vp-btn{margin-left:auto}',
+    /* The one control in this row is the point of the row, so it is sized above
+       the panel's default button: 32px against the 28px used elsewhere, with
+       the roomier padding and radius to match. */
+    '.vp-add>.vp-btn{margin-left:auto;height:32px;padding:0 16px;border-radius:9px;font-size:12px;font-weight:700;gap:6px;box-shadow:0 1px 2px rgba(15,118,110,.16)}',
+    '.vp-add>.vp-btn svg{width:13px;height:13px;flex:0 0 13px;display:block;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round}',
+    /* the fields grow with it, so the row still reads as one line of controls */
+    '.vp-add input.vp-i,.vp-add select.vp-i{padding:7px 8px}',
     /* Very narrow window (a small laptop or half-screen window): give the name
        its own line rather than letting the Add button wrap off on its own. */
     '@media (max-width:480px){.vp-add input#vp-n{flex:1 1 100%;max-width:none}.vp-add select{flex:1 1 88px}}',
+    /* The add row stays on screen at every window height. In a short window the
+       panel is taller than the viewport, and because the row sits at the foot
+       of the assignments card it fell past the fold: adding an assignment
+       meant scrolling the panel first. Sticking it to the bottom of the
+       panel's scroll area (.vp-b) keeps it visible for as long as the
+       assignments card itself is on screen, and changes nothing at all when
+       the whole panel already fits.
+       The card gives up overflow:hidden for this, because a clipping ancestor
+       is not a sticky scrollport - and then the two rows that touch the card's
+       edge have to draw the corners that the clipping used to provide. The
+       offset resolves against .vp-b's padding box, so the row stops just clear
+       of the footer rather than sitting welded to it. */
+    '#vp-asec{overflow:visible}',
+    '#vp-asec>h4{border-radius:10px 10px 0 0}',
+    '#vp-asec>.vp-add{position:sticky;bottom:0;z-index:2;border-radius:0 0 10px 10px}',
     /* No background tint: the strip's mint fill read as a squared-off green
        block sitting under the white panel. line-height:1 plus equal padding
        centres the text exactly rather than via the font's own metrics. */
@@ -1578,6 +1645,16 @@ function run(){
     '.vp-mini-x:hover{background:rgba(255,255,255,.26)}',
     '.vp-mini-x svg{width:11px;height:11px;display:block;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round}',
     '.vp-empty{padding:18px 14px;text-align:center}',
+    '.vp-guide{counter-reset:vps;padding:16px 15px 14px;text-align:left}',
+    '.vp-guide h5{font-size:13.5px;font-weight:700;margin-bottom:5px}',
+    '.vp-gp{font-size:11.5px;color:#3f5f5c;line-height:1.55;max-width:52ch}',
+    /* Numbered with a counter rather than the list marker: the marker sits
+       outside the list box and steals the left gutter the body needs. */
+    '.vp-steps{list-style:none;margin:12px 0 0;display:grid;gap:9px}',
+    '.vp-steps li{position:relative;padding-left:28px;counter-increment:vps;font-size:11.5px;line-height:1.5;color:#0f2e2c}',
+    '.vp-steps li b{font-weight:700}',
+    '.vp-steps li::before{content:counter(vps);position:absolute;left:0;top:0;width:19px;height:19px;border-radius:50%;background:#0f766e;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;line-height:1}',
+    '.vp-gfoot{margin-top:13px}',
     '.vp-empty h5{font-size:13.5px;font-weight:700;margin-bottom:5px}',
     '.vp-empty p{font-size:11.5px;color:#3f5f5c;line-height:1.55;max-width:46ch;margin:0 auto}',
     '.vp-blockp{font-size:11.5px;line-height:1.55;color:#b45309;max-width:44ch;margin:10px auto 0}',
@@ -1655,8 +1732,24 @@ function run(){
              reads as the next line of the table (and both fit the boxes) */
           '<input class="vp-i n" id="vp-e" type="number" step="0.5" placeholder="Score">',
           '<input class="vp-i n" id="vp-p" type="number" step="0.5" placeholder="Out of">',
-          '<button class="vp-btn pri" data-act="add">Add</button>',
+          '<button class="vp-btn pri" data-act="add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg>Add</button>',
         '</div>',
+      '</section>',
+      /* Shown only when the page is not StudentVUE at all. The steps are the
+         whole point: on the wrong tab there is no gradebook to read and no
+         grade to compute, so the panel says how to get to one rather than
+         pretending to be a gradebook. It is dropped the moment the portal
+         appears, because the ticker re-checks for it. */
+      '<section class="vp-sec vp-guide" id="vp-guide" hidden>',
+        '<h5 id="vp-guide-h">Not on StudentVUE</h5>',
+        '<p class="vp-gp">VuePoint reads the gradebook that is already on your screen. It has no login of its own, so it needs StudentVUE open first.</p>',
+        '<ol class="vp-steps">',
+          '<li><b>Open your school&rsquo;s StudentVUE site</b> in this tab and sign in.</li>',
+          '<li><b>Click Grade Book</b> in the menu down the left side.</li>',
+          '<li><b>Pick the class you want</b> and let its assignments load.</li>',
+          '<li><b>Click the VuePoint bookmark again</b> in your bookmarks bar.</li>',
+        '</ol>',
+        '<div class="vp-gfoot"><button class="vp-btn" data-act="rescan">Re-scan page</button></div>',
       '</section>',
       /* Shown when the page has no gradebook on it at all - a class is not open,
          or StudentVUE is on some other screen. One sentence and one button: no
@@ -1715,9 +1808,13 @@ function run(){
     state.meta=p.meta||{};
     state.gradeInfo=p.gradeInfo||null;
     state.weightSource=p.weightSource||'none';
-    /* a class is open when there is something to grade, or when the page is
-       shaped like a gradebook for a chosen class even though nothing is posted */
-    state.open=state.found||state.original!==null||gradebookOnPage();
+    state.onSV=p.onSV!==false;
+    /* "A class is open" has to mean the portal actually named one. Synergy's
+       page renders its gradebook panels before anything has been picked, so the
+       panels on their own are not evidence - trusting them is what printed the
+       advisory homeroom at the top of a page with no class open. A class with
+       nothing posted yet is still named by the portal, so it still counts. */
+    state.open=state.found||!!state.course;
     state.dirty=false;
   }
 
@@ -1761,10 +1858,14 @@ function run(){
     var shownPct=state.found?c.current:null;
 
     /* header. "No class selected" is reserved for pages with no class open at
-       all: a class with nothing posted yet still shows its gradebook panels, and
+       all: a class with nothing posted yet is still named by the portal, and
        saying otherwise there was a lie. A name is used whenever the portal gave
-       one, and a class open with no readable name still says so. */
-    q('vp-src').textContent=state.open?(state.course||'Class open'):'No class selected';
+       one, and a class open with no readable name still says so. Off StudentVUE
+       the header says that instead, because "no class selected" on an unrelated
+       page would read as a bug in the panel rather than the wrong tab. */
+    q('vp-src').textContent=state.onSV
+      ?(state.open?(state.course||'Class open'):'No class selected')
+      :'Not on StudentVUE';
     var badge=q('vp-state');
     badge.textContent=state.found?'Live':'Empty';
     badge.style.background=state.found?'rgba(255,255,255,.16)':'rgba(0,0,0,.22)';
@@ -1859,7 +1960,13 @@ function run(){
         ?'Nothing is posted for this class yet. Press <b>Re-scan page</b> to look again.'
         :'Open a class in StudentVUE so its gradebook is on screen, then press <b>Re-scan page</b>.';
     }
-    q('vp-empty').hidden=state.found;
+    /* Off StudentVUE there is nothing to read, weight or reset, so the panel
+       shows the way back to the gradebook instead of a bare "no data" card (and
+       certainly not a demo of controls that cannot do anything on this page). */
+    var offSite=!state.onSV;
+    var guideEl=q('vp-guide');
+    if(guideEl) guideEl.hidden=!offSite;
+    q('vp-empty').hidden=state.found||offSite;
   }
 
   function cssEscape(s){ return String(s).replace(/["\\]/g,'\\$&'); }
@@ -2573,6 +2680,14 @@ function run(){
     if(collapsed){
       if(!shell.hidden) shell.hidden=true;
       if(mini.hidden) mini.hidden=false;
+    }
+    /* On a page that is not StudentVUE nothing the page does can change what
+       the panel shows, and reading a whole document's text on a timer is not
+       free, so only the cheap "is it the portal yet" probe re-runs here.
+       Navigating into StudentVUE in this tab is picked up by the next tick. */
+    if(!state.onSV){
+      if(looksLikeStudentVue()) rescan(true);
+      return;
     }
     var s=pageSig();
     /* The first tick only records the baseline. Boot has to have finished

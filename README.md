@@ -61,6 +61,21 @@ decodes back to code that still parses. That check exists because a
 `javascript:` URL is percent-decoded before the browser runs it, which is how a
 dead bookmarklet once shipped.
 
+## Off StudentVUE
+
+The panel only reads StudentVUE. Opened anywhere else it shows the short route
+back to a gradebook (sign in, Grade Book, pick a class, click the bookmark
+again) rather than an empty gradebook or a set of controls that cannot do
+anything on that page. It decides which of the two to show from signals the
+portal writes itself: its hostname, its page title, its globals, its element ids
+and its script names.
+
+The portal also names an advisory class in its focus payload before any class has
+been picked, and always has one in its class list. That name is never used, since
+the class it belongs to is not the one on screen: with no class open the panel
+says "No class selected", and a class with nothing posted yet still shows the
+class the portal named.
+
 ## Test
 
 There is a local test harness covering the parse paths, run against both the

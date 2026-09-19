@@ -6,9 +6,15 @@
 # teacher name and real assignment scores. Keep the suite on this machine.
 mktest.js
 make-real-fixture.js
-test-gradebook*.html
-test-empty.html
-test-run*.html
+test-*.html
+
+# Throwaway check helpers and their output (see .freebuff/run.md)
+mk-*.js
+test-all.html
+wrap.html
+frame-*.html
+shot-*.png
+check*.png
 
 # Build intermediates. `node build.js` regenerates both from bookmarklet.js.
 bookmarklet.min.js
