@@ -31,6 +31,20 @@ read, scores each candidate on how much it looks like a gradebook, and parses
 the winner. Category weights come from the
 "Grade Calculation Summary" table when it exists; otherwise from the totals row.
 
+## Tech stack
+
+No frameworks, no dependencies, no server: the whole thing is plain JavaScript,
+HTML and CSS.
+
+- **Bookmarklet**: vanilla JavaScript in one file. The panel is built with DOM
+  APIs rather than a framework so the entire thing can minify down to a URL a
+  browser runs from a bookmark.
+- **Build**: plain Node, no packages to install. The only external tool is
+  terser, fetched by `npx` on the first run to minify `bookmarklet.js`.
+- **Hosting**: a static `index.html` on Vercel. Nothing runs server-side.
+- **Tests**: a local Node harness (`mktest.js`, not in this repo) run against
+  both the source and the shipped build.
+
 ## Files
 
 Edit these:

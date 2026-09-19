@@ -27,3 +27,10 @@ design-system/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# npm droppings. Node builtins are the only require() targets in this repo, so
+# nothing here should ever exist; ignored so an accidental `npm install` can
+# never get tracked.
+node_modules/
+package.json
+package-lock.json
