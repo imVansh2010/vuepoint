@@ -1809,6 +1809,19 @@ function run(){
     state.gradeInfo=p.gradeInfo||null;
     state.weightSource=p.weightSource||'none';
     state.onSV=p.onSV!==false;
+    /* Off the portal there is no gradebook to read, so nothing a page contains
+       counts as data. The landing page is the proof: its own markup (worked
+       examples, percentages in the FAQ, numbered steps) read as four
+       assignments and an 88% grade. Clearing the parse keeps a made-up grade out
+       of the panel and out of the state the panel paints from. */
+    if(!state.onSV){
+      state.list=[];
+      state.weights={'Uncategorized':0};
+      state.original=null;
+      state.found=false;
+      state.gradeInfo=null;
+      state.course='';
+    }
     /* "A class is open" has to mean the portal actually named one. Synergy's
        page renders its gradebook panels before anything has been picked, so the
        panels on their own are not evidence - trusting them is what printed the
@@ -1855,7 +1868,13 @@ function run(){
 
   function paint(){
     var c=compute();
-    var shownPct=state.found?c.current:null;
+    var offSite=!state.onSV;
+    /* A page that is not StudentVUE has no gradebook on it, so anything the
+       scraper happened to pull out of it is noise. The panel has to show either
+       a gradebook or the walkthrough back to the portal, never both: showing
+       both is what put a made-up grade next to the instructions. */
+    var showGrade=state.found&&!offSite;
+    var shownPct=showGrade?c.current:null;
 
     /* header. "No class selected" is reserved for pages with no class open at
        all: a class with nothing posted yet is still named by the portal, and
@@ -1866,14 +1885,17 @@ function run(){
     q('vp-src').textContent=state.onSV
       ?(state.open?(state.course||'Class open'):'No class selected')
       :'Not on StudentVUE';
+    /* "Live" against a page that has no gradebook would be a lie, so the status
+       pip goes away entirely off the portal. */
     var badge=q('vp-state');
+    badge.hidden=offSite;
     badge.textContent=state.found?'Live':'Empty';
     badge.style.background=state.found?'rgba(255,255,255,.16)':'rgba(0,0,0,.22)';
 
     /* Advisory only, and hidden in the ordinary case. The success banner that
        used to sit here restated the counts and the grade box below it. */
     var note='';
-    if(state.found){
+    if(showGrade){
       if(state.weightSource==='none'){
         note='<b>No category weights on this page.</b> Grading on total points. Open Categories to enter weights.';
       }else if(state.mode==='weighted'&&c.sumW<=0){
@@ -1946,10 +1968,10 @@ function run(){
     /* top-level visibility. The grading controls go too: with no gradebook on
        the page there is nothing to weight, nothing to re-scan and nothing to
        reset, and the empty state carries its own Re-scan button. */
-    q('vp-hero').hidden=!state.found;
-    q('vp-ctl').hidden=!state.found;
-    q('vp-wsec').hidden=!state.found;
-    q('vp-asec').hidden=!state.found;
+    q('vp-hero').hidden=!showGrade;
+    q('vp-ctl').hidden=!showGrade;
+    q('vp-wsec').hidden=!showGrade;
+    q('vp-asec').hidden=!showGrade;
     /* Two different situations wear the same empty panel, so it gets two
        messages: a class open with nothing posted to it yet, or no class open at
        all. Saying "no class" in the first case is what this fixes. */
@@ -1963,10 +1985,9 @@ function run(){
     /* Off StudentVUE there is nothing to read, weight or reset, so the panel
        shows the way back to the gradebook instead of a bare "no data" card (and
        certainly not a demo of controls that cannot do anything on this page). */
-    var offSite=!state.onSV;
     var guideEl=q('vp-guide');
     if(guideEl) guideEl.hidden=!offSite;
-    q('vp-empty').hidden=state.found||offSite;
+    q('vp-empty').hidden=showGrade||offSite;
   }
 
   function cssEscape(s){ return String(s).replace(/["\\]/g,'\\$&'); }
@@ -2412,7 +2433,7 @@ function run(){
     var had=state.found;
     applyParsed(p);
     renderAll();
-    if(!quiet) toast(state.found?('Re-read '+state.list.length+' assignments.'):'No assignment table found.');
+    if(!quiet) toast(!state.onSV?'Still not on StudentVUE.':(state.found?('Re-read '+state.list.length+' assignments.'):'No assignment table found.'));
     return had;
   }
 

@@ -8,8 +8,7 @@ anywhere.
 
 ## Using it
 
-1. Open <https://vuepoint.vercel.app/> in a browser on a laptop, desktop or
-   Chromebook.
+1. Open <https://vuepoint.vercel.app/> in a browser on a laptop or desktop.
 2. Drag the VuePoint button onto the bookmarks bar. `Ctrl + Shift + B` shows the bar.
 3. Open a class gradebook in StudentVUE and click the VuePoint bookmark.
 
