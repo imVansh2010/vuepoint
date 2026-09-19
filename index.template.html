@@ -186,6 +186,21 @@
     .drag-btn{font-size:14px;padding:12px 14px}
     .hint-box kbd{padding:1px 4px;font-size:11px}
   }
+  /* Big-screen scaling. Every size in this sheet is a fixed px value tuned on a
+     ~13" laptop, so on 15-17" and desktop screens the page reads small even
+     though the layout itself is fine. Rather than re-tune a hundred values,
+     scale the rendered page: zoom re-lays-out, so text stays crisp (a transform
+     would blur it), and spacing, type, cards and the mock gradebook all grow
+     together, keeping every ratio intact.
+
+     Media queries still test the real viewport, so the desktop/mobile
+     breakpoints above are untouched: a zoomed 1920 screen lays out at well over
+     920px and stays on desktop rules. The steps only fire on screens with room
+     to spare, and browsers without zoom (Firefox < 126) ignore them and keep
+     today's layout. */
+  @media(min-width:1500px){body{zoom:1.08}}
+  @media(min-width:1700px){body{zoom:1.16}}
+  @media(min-width:2200px){body{zoom:1.25}}
   @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}*,*::before,*::after{animation:none!important}}
 </style>
 </head>
@@ -309,10 +324,15 @@
   });
   a.addEventListener('click',function(e){
     e.preventDefault();
+    /* getBoundingClientRect reports visual pixels, i.e. already multiplied by
+       the body zoom the media queries above may have applied, while this fixed
+       element's left/top get multiplied by that zoom a second time. Divide it
+       out so the hint lands on the button at every screen size. */
+    var z=parseFloat(getComputedStyle(document.body).zoom)||1;
     var r=a.getBoundingClientRect(),d=document.createElement('div');
     d.className='dragging-hint';
     d.textContent="Drag me to your Bookmarks Bar. Then open StudentVUE and click the bookmark there.";
-    d.style.cssText='position:fixed;left:'+r.left+'px;top:'+(r.bottom+10)+'px;background:#134E4A;color:#fff;padding:10px 12px;border-radius:6px;font-size:12px;font-weight:600;max-width:min(380px,90vw);box-shadow:0 4px 6px rgba(0,0,0,.1);z-index:50';
+    d.style.cssText='position:fixed;left:'+(r.left/z)+'px;top:'+((r.bottom+10)/z)+'px;background:#134E4A;color:#fff;padding:10px 12px;border-radius:6px;font-size:12px;font-weight:600;max-width:min(380px,90vw);box-shadow:0 4px 6px rgba(0,0,0,.1);z-index:50';
     document.body.appendChild(d);
     setTimeout(function(){d.style.transition='opacity .2s';d.style.opacity='0';setTimeout(function(){d.remove();},220);},3000);
     window.scrollTo({top:0,behavior:'smooth'});
