@@ -35,38 +35,46 @@
   .chip svg{width:14px;height:14px;flex:0 0 14px}
   .install-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative}
   .install-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:10px}
-  /* The button and its badge breathe on ONE clock: same keyframes, same
-     duration, no delay, so they can never drift apart.
+  /* No part of the button scales. Scaling something this wide reads as a zooming
+     page rather than a nudge, so the motion is a sheen crossing the button's own
+     fill: the shape stays exactly where it is and only light moves across it.
+     The badge gets a ring that expands and fades, the standard "here" cue, so
+     the eye lands on the thing that says Drag me.
 
-     Only the FILL scales. The text sits still above it, and that is deliberate:
-     a transform animation composited onto the element that holds the text is
-     what made both labels look hazy. The compositor re-rasterises that layer
-     and drops subpixel antialiasing, so the glyphs go soft. Animating a
-     backdrop instead keeps the shapes moving and the words exactly as sharp as
-     the words around them. */
+     Both move a pseudo-element, never the element holding the words. A transform
+     composited onto a text layer makes the compositor re-rasterise it and drop
+     subpixel antialiasing, which is what made the labels look hazy before. The
+     words sit still at z-index 1 above two pristine backdrops.
+     Same duration, same easing, no delay: one clock, so they cannot drift. */
   .drag-wrap{position:relative;margin-top:16px}
-  .drag-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;background:transparent;color:#fff;padding:14px 24px;border-radius:8px;font-weight:700;font-size:16px;border:none;cursor:grab;transition:opacity .15s}
-  .drag-btn::before{content:"";position:absolute;inset:0;z-index:0;border-radius:inherit;background:var(--primary-dark);animation:drag-breathe 3.4s ease-in-out infinite}
+  .drag-btn{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:10px;background:transparent;color:#fff;padding:14px 24px;border-radius:8px;font-weight:700;font-size:16px;border:none;cursor:grab;transition:opacity .15s}
+  .drag-btn::before{content:"";position:absolute;inset:0;z-index:0;border-radius:inherit;background:var(--primary-dark)}
+  .drag-btn::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:45%;z-index:0;pointer-events:none;background:linear-gradient(100deg,rgba(255,255,255,0),rgba(255,255,255,.22),rgba(255,255,255,0));transform:translateX(0) skewX(-16deg);animation:drag-sheen 3.6s cubic-bezier(.4,0,.2,1) infinite}
   .drag-btn>*{position:relative;z-index:1}
   .drag-btn:hover{opacity:.88}
-  .drag-btn:hover::before{animation-play-state:paused}
+  .drag-btn:hover::after{animation-play-state:paused}
   .drag-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
   .drag-btn svg{width:22px;height:22px;flex:0 0 22px}
   /* The badge sits beside the link, not inside it: a browser names a bookmarked
      link after its text, so the words "Drag me" living inside the anchor made
      the bookmark itself read "VuePoint drag me". Outside it, the bookmark reads
-     VuePoint, and the pill is free to be a scaled backdrop for the words.
+     VuePoint, and the pill is free to be a plain backdrop for the words.
 
      White on the dark teal button rather than the orange accent: the badge is
      part of this palette, and the accent read as a warning sticker dropped on
      top of it. The teal hairline outlines the pill where it overhangs the
      button onto the white card, so it keeps an edge against both. */
   .drag-tag{position:absolute;top:-9px;right:12px;z-index:2;display:inline-flex;align-items:center;gap:5px;color:var(--primary-dark);font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;padding:4px 9px;white-space:nowrap;pointer-events:none;-webkit-user-select:none;user-select:none}
-  .drag-tag::before{content:"";position:absolute;inset:0;z-index:0;background:#fff;border:1px solid var(--primary);border-radius:99px;box-shadow:0 2px 8px rgba(15,118,110,.28);animation:drag-breathe 3.4s ease-in-out infinite}
+  .drag-tag::before{content:"";position:absolute;inset:0;z-index:0;background:#fff;border:1px solid var(--primary);border-radius:99px;box-shadow:0 2px 8px rgba(15,118,110,.28)}
+  .drag-tag::after{content:"";position:absolute;inset:-1px;z-index:0;pointer-events:none;border:1.5px solid var(--primary);border-radius:99px;transform:scale(1);opacity:.5;animation:drag-ring 3.6s cubic-bezier(.4,0,.2,1) infinite}
   .drag-tag>*{position:relative;z-index:1}
   .drag-tag svg{width:11px;height:11px;flex:0 0 11px;display:block}
-  .drag-wrap:hover .drag-tag::before{animation-play-state:paused}
-  @keyframes drag-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+  .drag-wrap:hover .drag-tag::after{animation-play-state:paused}
+  /* One sweep, then a rest. Holding the transform off-screen for the second half
+     of the cycle keeps the pause part of the same clock instead of a second
+     animation timer, so the sheen and the ring always start on the same frame. */
+  @keyframes drag-sheen{0%{transform:translateX(0) skewX(-16deg)}50%,100%{transform:translateX(360%) skewX(-16deg)}}
+  @keyframes drag-ring{0%{transform:scale(1);opacity:.5}50%,100%{transform:scale(1.6);opacity:0}}
   .hint-box{margin-top:12px;background:var(--bg);border:1px solid var(--border-neutral);border-radius:8px;padding:12px;font-size:13px;color:var(--muted-fg);line-height:1.5}
   .hint-box b{color:var(--fg);font-weight:600}
   .hint-box kbd{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--card);border:1px solid var(--border-neutral);border-bottom-width:2px;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:700}

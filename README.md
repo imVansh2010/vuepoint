@@ -1,13 +1,14 @@
 # VuePoint
 
-A bookmarklet that turns a StudentVUE gradebook into a what-if calculator. Click
-it on a gradebook page and a small panel opens over the portal: edit any score,
-add hypothetical assignments, and watch the overall grade update as you type.
-Nothing is saved and nothing leaves the tab.
+A bookmarklet that calculates hypothetical grades on StudentVUE. Click it on a
+class gradebook and a panel opens over the page: add an assignment, tweak a
+category, or change a score, and the overall grade updates as you type.
+Everything runs locally in your tab. Nothing is saved, and nothing is sent
+anywhere.
 
 ## Using it
 
-1. Open `index.html` (or the hosted copy) in a browser on a laptop, desktop or
+1. Open <https://vuepoint.vercel.app/> in a browser on a laptop, desktop or
    Chromebook.
 2. Drag the VuePoint button onto the bookmarks bar. `Ctrl + Shift + B` shows the bar.
 3. Open a class gradebook in StudentVUE and click the VuePoint bookmark.
@@ -25,10 +26,10 @@ The toggle picks which one drives the big number. On load VuePoint compares both
 against the grade StudentVUE is showing and defaults to whichever matches. A
 category with a 0 or blank weight is left out of the weighted total.
 
-Reading the page is deliberately defensive, because schools run different
-StudentVUE versions. VuePoint scans tables, ARIA grids and row groups inside
-every frame it is allowed to read, scores each candidate on how much it looks
-like a gradebook, and parses the winner. Category weights come from the
+Schools run different StudentVUE versions, so VuePoint assumes nothing about the
+markup. It scans tables, ARIA grids and row groups inside every frame it can
+read, scores each candidate on how much it looks like a gradebook, and parses
+the winner. Category weights come from the
 "Grade Calculation Summary" table when it exists; otherwise from the totals row.
 
 ## Files
@@ -43,7 +44,7 @@ Edit these:
 Generated, do not edit:
 
 - `index.html`: the built page with the bookmarklet embedded. This is the file
-  you host.
+  you host; what is live at <https://vuepoint.vercel.app/> is this file.
 - `bookmarklet.min.js`, `bookmarklet.raw.txt`: intermediates from the same build.
 
 ## Build
@@ -59,7 +60,8 @@ Run that after editing `bookmarklet.js` or `index.template.html`. It minifies,
 escapes the URL and refuses to write `index.html` unless the bookmarklet URL
 decodes back to code that still parses. That check exists because a
 `javascript:` URL is percent-decoded before the browser runs it, which is how a
-dead bookmarklet once shipped.
+dead bookmarklet once shipped. Deploying is then just the rebuilt `index.html`,
+which is what Vercel serves.
 
 ## Off StudentVUE
 
