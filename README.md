@@ -81,6 +81,41 @@ decodes back to code that still parses. That check exists because a
 dead bookmarklet once shipped. Deploying is then just the rebuilt `index.html`,
 which is what Vercel serves.
 
+## Shipping an update
+
+A bookmarklet cannot update itself. Its URL is copied into the bookmarks bar at
+install time and no page is allowed to rewrite a bookmark, so an installed copy
+stays on the version it was installed at, and the user has to drag the button
+across again.
+
+What the landing page can do is notice that this is needed. When the button is
+dragged - or its link copied - the version the page ships is written to
+`localStorage`. The next visit compares that record with the version the page is
+now serving, and if they differ the install card says so: *"VuePoint v1.1 is
+out. The copy in your Bookmarks Bar is v1.0. Drag the button above onto the bar
+again and replace the old bookmark to update it."* Dragging it again clears the
+notice.
+
+It is local only: no cookie, no request, nothing sent. The record is per
+browser, so a bookmark installed in one browser cannot be seen from another and
+simply gets no notice, and a visitor who never returns to the site cannot be
+warned at all.
+
+Bump the version in all three places when shipping a release, then
+`node build.js`:
+
+- `bookmarklet.js`: `VPVER` at the top of the file. It is the only version
+  string in there - it stamps `data-vuepoint-version` on the panel and prints
+  the version in the panel footer.
+- `index.template.html`: the `<meta name="vuepoint-version">` the notice reads.
+- `index.template.html`: the badge in the footer.
+
+The panel footer also carries the version and a link back to the site, for
+anyone whose copy is misbehaving: they open the site in a new tab and drag the
+button across again. A bookmarklet that runs on a foreign page cannot reach
+anything of ours by itself, so a click that opens the site is the only route
+left that does not turn every open into a network request.
+
 ## Off StudentVUE
 
 The panel only reads StudentVUE. Opened anywhere else it shows the short route

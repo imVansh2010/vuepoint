@@ -13,6 +13,14 @@ if(document.getElementById('vuepoint-root')){
   return;
 }
 
+/* Version and home page. VPVER is the only version string in this file: it
+   labels the panel footer and is stamped on the panel root as
+   data-vuepoint-version. The landing page keeps its own copy in
+   <meta name="vuepoint-version">, and all three have to move together - see
+   "Shipping an update" in the README. SITE is where a stale copy is replaced. */
+var VPVER='1.1';
+var SITE='https://vuepoint.vercel.app/';
+
 /* =============================== helpers =============================== */
 
 function norm(s){
@@ -35,10 +43,8 @@ function esc(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-function r1(n){ return isFinite(n)?Math.round(n*10)/10:n; }
 function r2(n){ return isFinite(n)?Math.round(n*100)/100:n; }
 function pctText(n){ return (n===null||!isFinite(n))?'\u2014':r2(n).toFixed(2)+'%'; }
-function ptsText(n){ return (n===null||!isFinite(n))?'\u2014':(Math.round(n*100)/100); }
 
 /* Every cut-off sits on a HALF point, because the grade is rounded to the
    nearest whole percent before it is read as a letter: 92.5 rounds to 93, so it
@@ -826,7 +832,6 @@ function findWeights(docs){
       var combined=(norm(lbl.join(' '))+' '+norm(t.textContent)).toLowerCase();
       if(combined.indexOf('weight')===-1) continue;
       if(!/(categor|weight|%|points)/.test(combined)) continue;
-      var tt=combined;
       var local={}, n=0, trs=directRows(t);
       for(var r=0;r<trs.length;r++){
         var cells=directCells(trs[r]);
@@ -1300,19 +1305,11 @@ function looksLikeStudentVue(){
 
 function parseAll(){
   var docs=collectDocs();
-  var grids=[], nTables=0, nFrames=docs.length-1, nRole=0, nGroups=0;
-  for(var d=0;d<docs.length;d++){
-    var gs=tableGrids(docs[d]);
-    nTables+=gs.length;
-    grids=grids.concat(gs);
-  }
+  var grids=[];
+  for(var d=0;d<docs.length;d++) grids=grids.concat(tableGrids(docs[d]));
   for(var d2=0;d2<docs.length;d2++){
-    var rgs=roleGrids(docs[d2]);
-    nRole+=rgs.length;
-    grids=grids.concat(rgs);
-    var grps=rowGroupCandidates(docs[d2]);
-    nGroups+=grps.length;
-    grids=grids.concat(grps);
+    grids=grids.concat(roleGrids(docs[d2]));
+    grids=grids.concat(rowGroupCandidates(docs[d2]));
   }
 
   for(var s=0;s<grids.length;s++) grids[s].score=scoreGrid(grids[s]);
@@ -1324,37 +1321,15 @@ function parseAll(){
   }
   viable.sort(function(a,b){ return b.score-a.score; });
 
-  var list=[], headerIdx=-1, roles=[], chosen=null;
+  /* `viable` is sorted best score first, so the first candidate that actually
+     parses is the best one to trust, and the loop stops there. */
+  var list=[];
   for(var v=0;v<viable.length&&!list.length;v++){
     var g=viable[v];
-    chosen=g;
     var hi=findHeader(g);
     var rr=hi>=0?colRoles(g.rows[hi].texts):[];
     var parsed=parseAssignments(g,hi,rr);
-    if(parsed.length){ list=parsed; headerIdx=hi; roles=rr; }
-  }
-  /* a compact picture of the best candidates, for the report */
-  var topBlocks=[];
-  var ranked=grids.slice(0).sort(function(a,b){ return (b.score||0)-(a.score||0); });
-  for(var rb=0;rb<ranked.length&&rb<8;rb++){
-    var blk=ranked[rb], blkCols=0, blkScored=0, blkSample=[];
-    for(var rr=0;rr<blk.rows.length;rr++){
-      var rt=blk.rows[rr].texts;
-      if(rt.length>blkCols) blkCols=rt.length;
-      var hasS=false;
-      for(var cc=0;cc<rt.length;cc++){ if(isValue(parseCell(rt[cc]))) hasS=true; }
-      if(hasS) blkScored++;
-      if(blkSample.length<4) blkSample.push(rt.slice(0,8));
-    }
-    var tag='?';
-    try{
-      if(blk.el&&blk.el.tagName){
-        tag=blk.el.tagName.toLowerCase();
-        var cn=String(blk.el.className||'').split(' ')[0];
-        if(cn) tag+='.'+cn;
-      }
-    }catch(e){}
-    topBlocks.push({kind:blk.kind,tag:tag,rows:blk.rows.length,cols:blkCols,scored:blkScored,score:r2(blk.score||0),sample:blkSample});
+    if(parsed.length) list=parsed;
   }
 
   var grade=findGrade(docs);
@@ -1407,21 +1382,9 @@ function parseAll(){
     gradeInfo:grade,
     courseTitle:course,
     onSV:looksLikeStudentVue(),
-    meta:{
-      docs:docs.length, frames:nFrames, blocked:BLOCKED_FRAMES.slice(0,6),
-      tables:nTables, roleGrids:nRole, rowGroups:nGroups,
-      candidates:grids.length, viable:viable.length,
-      bestScore:chosen?r2(chosen.score):0,
-      bestKind:chosen?chosen.kind:'none',
-      headerRow:headerIdx,
-      roles:roles,
-      headerTexts:(headerIdx>=0&&chosen&&chosen.rows[headerIdx])?chosen.rows[headerIdx].texts.slice(0,8):[],
-      rowsScanned:chosen?chosen.rows.length:0,
-      totalPct:totalPct===null?null:r2(totalPct),
-      weightedPct:weightedPct===null?null:r2(weightedPct),
-      weightSource:w.source, weightSum:w.sum,
-      top:topBlocks
-    }
+    /* `blocked` is the only metadata the panel reads: it drives the "this page
+       has a frame I am not allowed to read" line in the empty state. */
+    meta:{blocked:BLOCKED_FRAMES.slice(0,6)}
   };
 }
 
@@ -1521,8 +1484,8 @@ function run(){
     '.vp-seg button:hover{background:rgba(15,118,110,.09);color:#0f2e2c}',
     '.vp-seg button[aria-pressed="true"],.vp-seg button[aria-pressed="true"]:hover{background:#0f766e;color:#fff;box-shadow:0 1px 3px rgba(15,118,110,.32)}',
     '.vp-btn{display:inline-flex;align-items:center;justify-content:center;height:28px;padding:0 12px;border:1px solid #cbe6e2;background:#fff;border-radius:8px;font-weight:600;font-size:11px;line-height:1;color:#0f2e2c;cursor:pointer;transition:background .15s,border-color .15s,color .15s,box-shadow .15s,transform .12s}',
-    /* only the control row grows: the same .vp-btn is used by the diagnostics
-       bar and the assignment row, which should keep their compact size. */
+    /* only the control row grows: the same .vp-btn is used by the assignment
+       row, which should keep its compact size. */
     '.vp-ctl .vp-btn{height:34px;padding:0 15px;border-radius:9px;font-size:12px}',
     '.vp-btn.sm{height:25px;padding:0 10px;border-radius:7px;font-size:10.5px}',
     '.vp-btn:hover{border-color:#0f766e;color:#0f766e;transform:translateY(-1px);box-shadow:0 2px 6px rgba(15,118,110,.14)}',
@@ -1631,6 +1594,14 @@ function run(){
     '.vp-ft{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 12px 7px;border-top:1px solid #e6f2f0;background:transparent;flex:0 0 auto;flex-wrap:wrap}',
     '.vp-ft small{font-size:10px;line-height:1.3;color:#5b7d79}',
     '.vp-by{font-size:10px;line-height:1.3;font-weight:600;color:#0f766e;white-space:nowrap}',
+    /* The update link rides in the existing footer row rather than adding a
+       button to the control row, so the panel keeps exactly the height it had.
+       It reads amber because it is the one thing here you act on when something
+       is wrong; the credit beside it stays quiet. */
+    '.vp-fr{display:flex;align-items:center;gap:9px}',
+    '.vp-upd{font-size:10px;line-height:1.3;font-weight:700;color:#b45309;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}',
+    '.vp-upd:hover{color:#92400e}',
+    '.vp-sep{width:1px;height:10px;background:#cbe6e2}',
     /* the folded chip: the checkmark and the name reopen the panel, the cross
        beside them dismisses it - two explicit choices, no nested menu */
     '.vp-mini{display:flex;align-items:center;gap:2px;width:max-content;padding:3px 4px 3px 3px;border-radius:99px;background:#0f766e;color:#fff;box-shadow:0 1px 2px rgba(15,23,42,.06),0 8px 18px -6px rgba(15,23,42,.22),0 22px 44px -18px rgba(15,23,42,.32);animation:vpUnfold .24s cubic-bezier(.22,.9,.28,1) both}',
@@ -1662,9 +1633,6 @@ function run(){
     '.vp-empty h5{font-size:13.5px;font-weight:700;margin-bottom:5px}',
     '.vp-empty p{font-size:11.5px;color:#3f5f5c;line-height:1.55;max-width:46ch;margin:0 auto}',
     '.vp-blockp{font-size:11.5px;line-height:1.55;color:#b45309;max-width:44ch;margin:10px auto 0}',
-    '.vp-diag{margin:0 10px 10px;border:1px solid #cbe6e2;border-radius:8px;overflow:hidden}',
-    '.vp-diag pre{font:10.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word;background:#0f2e2c;color:#d8f5f1;padding:8px 9px;max-height:190px;overflow:auto}',
-    '.vp-diag .vp-dbar{display:flex;gap:5px;padding:6px 8px;background:#f0fdfa;border-bottom:1px solid #dff5f2}',
     '.vp-toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f2e2c;color:#fff;font:600 12px system-ui,sans-serif;padding:9px 14px;border-radius:8px;z-index:2147483647;box-shadow:0 6px 18px rgba(0,0,0,.2);transition:opacity .18s,translate .18s;translate:0 8px;opacity:0}',
     /* Rows fade in only when they are created. Score edits repaint without
        rebuilding the table, so a what-if row cannot re-animate under the
@@ -1766,14 +1734,14 @@ function run(){
           '<button class="vp-btn pri" data-act="rescan">Re-scan page</button>',
         '</div>',
       '</section>',
-      '<div class="vp-diag" id="vp-diag" hidden>',
-        '<div class="vp-dbar"><button class="vp-btn" data-act="diag-deep">Deep scan</button><button class="vp-btn" data-act="diag-copy">Copy report</button><button class="vp-btn" data-act="diag-hide">Hide</button></div>',
-        '<pre id="vp-diag-pre"></pre>',
-      '</div>',
     '</div>',
     '<div class="vp-ft">',
-      '<small>Local only &mdash; nothing is saved or sent.</small>',
-      '<span class="vp-by">Made by Vansh Agarwal</span>',
+      '<small>v'+VPVER+' &middot; Local only &mdash; nothing is saved or sent.</small>',
+      '<span class="vp-fr">',
+        '<a class="vp-upd" href="'+SITE+'" target="_blank" rel="noopener noreferrer" title="Open the site and drag the VuePoint button onto your bookmarks bar again to replace this copy.">Not working? Update it</a>',
+        '<i class="vp-sep"></i>',
+        '<span class="vp-by">Made by Vansh Agarwal</span>',
+      '</span>',
     '</div>'
   ].join('');
   shadow.appendChild(shell);
@@ -1850,7 +1818,14 @@ function run(){
       byCat[c].n++;
     }
     var totalPct=tP>0?tE/tP*100:null;
-    var sumW=0,wSum=0,cats=[];
+    var sumW=0,wSum=0,cats=[],entered=0;
+    /* what the weights add up to as they were typed, which is what the
+       "N% of 100" check in the header is about - `sumW` below is a different
+       number: the weight actually driving the weighted grade, which only counts
+       categories that have a score in them. */
+    for(var we in state.weights){
+      if(Object.prototype.hasOwnProperty.call(state.weights,we)) entered+=Math.max(0,Number(state.weights[we])||0);
+    }
     for(var k in byCat){
       if(!Object.prototype.hasOwnProperty.call(byCat,k)) continue;
       var d=byCat[k], w=Math.max(0,Number(state.weights[k])||0);
@@ -1863,7 +1838,7 @@ function run(){
     var current = state.mode==='weighted'
       ? (weightedPct!==null?weightedPct:totalPct)
       : (totalPct!==null?totalPct:weightedPct);
-    return {earned:tE,possible:tP,totalPct:totalPct,weightedPct:weightedPct,current:current,cats:cats,sumW:sumW};
+    return {earned:tE,possible:tP,totalPct:totalPct,weightedPct:weightedPct,current:current,cats:cats,sumW:sumW,enteredTotal:entered};
   }
 
   /* remembered so the projected grade animates only when it actually changes;
@@ -1902,7 +1877,7 @@ function run(){
     if(showGrade){
       if(state.weightSource==='none'){
         note='<b>No category weights on this page.</b> Grading on total points. Open Categories to enter weights.';
-      }else if(state.mode==='weighted'&&c.sumW<=0){
+      }else if(state.mode==='weighted'&&c.enteredTotal<=0){
         note='<b>Category weights are all zero.</b> Weighted mode falls back to total points &mdash; type weights under Categories to use it.';
       }
     }
@@ -1962,8 +1937,8 @@ function run(){
 
     /* weights */
     var sum=q('vp-wsum');
-    sum.textContent=r2(c.sumW)+'% of 100';
-    sum.style.color=(Math.abs(c.sumW-100)<0.5)?'#0f766e':(c.sumW>100?'#b91c1c':'#b45309');
+    sum.textContent=r2(c.enteredTotal)+'% of 100';
+    sum.style.color=(Math.abs(c.enteredTotal-100)<0.5)?'#0f766e':(c.enteredTotal>100?'#b91c1c':'#b45309');
     for(var i=0;i<c.cats.length;i++){
       var el=shadow.querySelector('[data-catpct="'+cssEscape(c.cats[i].name)+'"]');
       if(el) el.textContent=c.cats[i].pct===null?'no scores':r2(c.cats[i].pct).toFixed(1)+'%';
@@ -2032,12 +2007,15 @@ function run(){
     var tb=q('vp-rows');
     tb.innerHTML='';
     var frag=document.createDocumentFragment();
+    /* the category list is the same for every row, and catNames() sorts it, so
+       it is built once here rather than once per assignment */
+    var names=catNames();
     for(var i=0;i<state.list.length;i++){
       var a=state.list[i];
       var tr=document.createElement('tr');
       if(a.hypothetical) tr.className='hypo';
       tr.setAttribute('data-i',String(i));
-      var opts=catNames().map(function(n){
+      var opts=names.map(function(n){
         return '<option value="'+esc(n)+'"'+(n===a.category?' selected':'')+'>'+esc(n)+'</option>';
       }).join('');
       tr.innerHTML=
@@ -2077,236 +2055,6 @@ function run(){
     requestAnimationFrame(function(){ t.style.opacity='1'; t.style.translate='0 0'; });
     if(toastTimer) clearTimeout(toastTimer);
     toastTimer=setTimeout(function(){ t.style.opacity='0'; t.style.translate='0 8px'; },2200);
-  }
-
-  /* ---------------------------- diagnostics ---------------------------- */
-
-  function diagText(){
-    var m=state.meta||{};
-    var nl=String.fromCharCode(10);
-    var L=[];
-    L.push('VuePoint report');
-    L.push('url: '+location.href);
-    L.push('page title: '+document.title);
-    L.push('agent: '+navigator.userAgent);
-    L.push('');
-    L.push('documents read: '+(m.docs||1));
-    L.push('frames I could not read (different origin): '+((m.blocked&&m.blocked.length)?m.blocked.join('  |  '):'none'));
-    L.push('tables: '+(m.tables||0)+'   role grids: '+(m.roleGrids||0)+'   row groups: '+(m.rowGroups||0));
-    L.push('candidate blocks: '+(m.candidates||0)+'   passed the gradebook test: '+(m.viable||0));
-    L.push('chosen block: '+(m.bestKind||'none')+'  score '+(m.bestScore||0)+'  rows '+(m.rowsScanned||0)+'  headerRow '+(m.headerRow===undefined?-1:m.headerRow));
-    L.push('header cells: '+((m.headerTexts&&m.headerTexts.length)?JSON.stringify(m.headerTexts):'(none)'));
-    L.push('column roles:  '+((m.roles&&m.roles.length)?JSON.stringify(m.roles):'(none)'));
-    L.push('');
-    L.push('assignments parsed: '+state.list.length);
-    L.push('categories: '+JSON.stringify(state.weights));
-    L.push('weights: source '+(m.weightSource||'none')+'  sum '+(m.weightSum===undefined?'-':m.weightSum));
-    L.push('grade shown on page: '+(state.original===null?'not found':r2(state.original)+'%')+((state.gradeInfo&&state.gradeInfo.font)?'  (font '+state.gradeInfo.font+'px)':''));
-    L.push('grade context: '+((state.gradeInfo&&state.gradeInfo.ctx)||'-'));
-    L.push('course heading: '+(state.course||'-'));
-    var blks=m.top||[];
-    for(var i=0;i<blks.length;i++){
-      var b=blks[i];
-      L.push('');
-      L.push('block '+i+': '+b.kind+'  <'+b.tag+'>  rows='+b.rows+'  cols='+b.cols+'  scoredRows='+b.scored+'  score='+b.score);
-      for(var j=0;j<b.sample.length;j++) L.push('    row '+j+': '+JSON.stringify(b.sample[j]));
-    }
-    if(state.list.length){
-      L.push('');
-      L.push('parsed rows:');
-      for(var k=0;k<Math.min(state.list.length,15);k++){
-        L.push('    '+JSON.stringify(state.list[k].name)+'  cat='+JSON.stringify(state.list[k].category)+'  '+state.list[k].earned+'/'+state.list[k].possible);
-      }
-    }
-    return L.join(nl);
-  }
-
-  /* --------------------- deep scan: impartial DOM dump --------------------- */
-  /* diagText() above only describes the blocks the parser already decided to
-     consider. If the gradebook is a shape the parser never looked at, that
-     report is silent about the very thing that is broken - it just says
-     "candidates: 0". This walks the page with no assumptions at all and prints
-     what is genuinely there, so the exact structure can be fixed.
-
-     Prose is redacted (titles and names become "text:N") while numbers,
-     percents and "18 / 20" scores stay verbatim, so the result is safe to
-     paste in public and still contains everything the parser needs. */
-
-  function descEl(el){
-    if(!el) return '(none)';
-    var tag='?', id='', cls='';
-    try{ tag=String(el.tagName||'?').toLowerCase(); }catch(e){}
-    try{ if(el.id) id='#'+el.id; }catch(e){}
-    try{
-      var c=el.getAttribute?el.getAttribute('class'):'';
-      if(c) cls='.'+String(c).replace(/\s+/g,' ').trim().split(' ').slice(0,3).join('.');
-      var role=el.getAttribute?el.getAttribute('role'):'';
-      if(role) cls+='[role='+role+']';
-    }catch(e){}
-    return tag+id+cls;
-  }
-
-  /* keep=true is for labels - header cells and page chrome - which are
-     structural and carry no personal data, so they must survive verbatim or the
-     report is useless. Data rows use keep=false: a title or a name there is the
-     student's own content, so only its length survives. */
-  function shapeText(t,keep){
-    t=String(t===null||t===undefined?'':t).replace(/\s+/g,' ').trim();
-    if(!t) return '';
-    if(keep) return t.length>34?t.slice(0,34)+'\u2026':t;
-    if(/^[0-9.,%/+\-\u2013\u2014\s]+$/.test(t)) return t.slice(0,18);
-    if(t.length<=3) return t;
-    return '\u00abtext:'+t.length+'\u00bb';
-  }
-
-  function cntIn(root,sel){ try{ return root.querySelectorAll(sel).length; }catch(e){ return 0; } }
-
-  function siblingGroups(d,L){
-    var els=[];
-    try{ els=d.querySelectorAll('div,ul,ol,section,dl,form'); }catch(e){}
-    var found=0;
-    for(var i=0;i<els.length&&found<8;i++){
-      var el=els[i];
-      if(!el.children||el.children.length<3||el.children.length>400) continue;
-      if(!shown(el)) continue;
-      var inTable=null;
-      try{ inTable=el.closest('table'); }catch(e){}
-      if(inTable) continue;
-      var kids=el.children, sig={}, best='', bestN=0, j;
-      for(j=0;j<kids.length;j++){
-        /* ignore ids when comparing: repeated rows differ only by index */
-        var s=descEl(kids[j]).replace(/#[^.\[]*/,'');
-        sig[s]=(sig[s]||0)+1;
-      }
-      for(var key in sig) if(sig[key]>bestN){ bestN=sig[key]; best=key; }
-      if(bestN<3) continue;
-      var sample=null;
-      for(j=0;j<kids.length;j++){
-        if(descEl(kids[j]).replace(/#[^.\[]*/,'')===best){ sample=kids[j]; break; }
-      }
-      if(!sample||sample.children.length<2) continue;
-      var cells=[];
-      for(j=0;j<sample.children.length;j++) cells.push(shapeText(elText(sample.children[j])));
-      L.push('   GROUP '+descEl(el)+'  children='+kids.length+'  repeated '+bestN+'x as '+best);
-      L.push('      sample row: '+JSON.stringify(cells));
-      found++;
-    }
-    if(!found) L.push('   (none)');
-  }
-
-  function docScan(d,i,L){
-    L.push('');
-    L.push('================= document '+i+' =================');
-    L.push('body: '+descEl(d.body||d.documentElement));
-    var ts=[], fs=[];
-    try{ ts=d.querySelectorAll('table'); }catch(e){}
-    try{ fs=d.querySelectorAll('iframe,frame'); }catch(e){}
-    L.push('elements: '+cntIn(d,'*')+'   tables: '+ts.length+'   iframes: '+fs.length+
-           '   role=grid|table: '+cntIn(d,'[role="grid"],[role="table"]'));
-
-    var a,t,rs,c,hs,r,cs,k;
-    for(a=0;a<ts.length&&a<12;a++){
-      t=ts[a];
-      rs=t.rows||[];
-      c=(rs.length&&rs[0].cells)?rs[0].cells.length:0;
-      L.push('');
-      L.push('TABLE['+a+'] '+descEl(t)+'  rows='+rs.length+'  cols='+c+
-             '  visible='+(shown(t)?'yes':'NO')+'  thead='+(t.tHead?'yes':'no')+
-             (t.caption?'  caption='+shapeText(t.caption.textContent):''));
-      hs=[];
-      if(rs.length&&rs[0].cells) for(k=0;k<rs[0].cells.length;k++) hs.push(shapeText(elText(rs[0].cells[k]),true));
-      L.push('   row0 (headers, verbatim): '+JSON.stringify(hs));
-      for(r=1;r<rs.length&&r<=3;r++){
-        cs=[];
-        if(rs[r].cells) for(k=0;k<rs[r].cells.length;k++) cs.push(shapeText(elText(rs[r].cells[k])));
-        L.push('   row'+r+': '+JSON.stringify(cs));
-      }
-    }
-
-    var gs=[];
-    try{ gs=d.querySelectorAll('[role="grid"],[role="table"]'); }catch(e){}
-    for(a=0;a<gs.length&&a<6;a++){
-      var g=gs[a], rEls=[];
-      try{ rEls=g.querySelectorAll('[role="row"]'); }catch(e){}
-      L.push('');
-      L.push('GRID['+a+'] '+descEl(g)+'  visible='+(shown(g)?'yes':'NO')+'  rows='+rEls.length+
-             '  cells='+cntIn(g,'[role="gridcell"],[role="cell"],[role="columnheader"],[role="rowheader"]'));
-      for(r=0;r<rEls.length&&r<4;r++){
-        var cl=[], fc=[];
-        try{ fc=rEls[r].querySelectorAll('[role="gridcell"],[role="cell"],[role="columnheader"],[role="rowheader"]'); }catch(e){}
-        for(k=0;k<fc.length;k++) cl.push(shapeText(elText(fc[k]),r===0));
-        L.push('   row'+r+(r===0?' (headers, verbatim)':'')+': '+JSON.stringify(cl));
-      }
-    }
-
-    L.push('');
-    L.push('--- repeated sibling groups (pages with no usable <table>) ---');
-    siblingGroups(d,L);
-
-    L.push('');
-    L.push('--- elements whose entire text is a percentage ---');
-    var pe=[];
-    try{ pe=d.querySelectorAll('td,span,div,strong,b,em,i,p,a'); }catch(e){}
-    var cap=0;
-    for(a=0;a<pe.length&&cap<10;a++){
-      var el=pe[a];
-      if(el.children.length) continue;
-      var txt=elText(el).replace(/\s+/g,'');
-      if(!/^[0-9]{1,3}(\.[0-9]{1,4})?%$/.test(txt)) continue;
-      var st=null;
-      try{ st=(d.defaultView||window).getComputedStyle(el); }catch(e){}
-      L.push('   '+descEl(el)+' = '+txt+'  font='+(st?st.fontSize+'/'+st.fontWeight:'?')+'  parent='+descEl(el.parentNode));
-      cap++;
-    }
-    if(!cap) L.push('   (none)');
-
-    L.push('');
-    L.push('--- class/id names that look gradebook-ish ---');
-    var hs2=[];
-    /* both class and id: StudentVUE is as likely to name a node tbAssignments
-       as it is to class it. A hidden grading period lives in here too. */
-    try{ hs2=d.querySelectorAll('[class*="grade" i],[class*="score" i],[class*="assign" i],[class*="mark" i],[class*="category" i],[class*="weight" i],[class*="course" i],[class*="period" i],[id*="grade" i],[id*="score" i],[id*="assign" i],[id*="mark" i],[id*="cat" i],[id*="weight" i],[id*="course" i],[id*="period" i]'); }catch(e){}
-    if(!hs2.length) L.push('   (none)');
-    for(a=0;a<hs2.length&&a<16;a++){
-      L.push('   '+descEl(hs2[a])+'  children='+hs2[a].children.length+'  textlen='+(hs2[a].textContent||'').length);
-    }
-
-    /* The visible text, line by line. This is the highest-signal part of the
-       report: it says whether the page is even a gradebook, and which of its
-       labels the parser should have matched. Line-truncated so a long blob
-       cannot drown the structure. */
-    L.push('');
-    L.push('--- visible page text, first 40 lines ---');
-    var it='';
-    try{ it=String((d.body&&d.body.innerText)||''); }catch(e){}
-    L.push('   total length='+it.length);
-    var raw=[], ln=[];
-    try{ raw=it.split(/\n+/); }catch(e){}
-    for(a=0;a<raw.length&&ln.length<40;a++){
-      var s=raw[a].replace(/\s+/g,' ').trim();
-      if(!s) continue;
-      if(s.length>72) s=s.slice(0,72)+'\u2026';
-      ln.push(s);
-    }
-    if(!ln.length) L.push('   (empty)');
-    for(a=0;a<ln.length;a++) L.push('   | '+ln[a]);
-  }
-
-  function deepScanText(){
-    var NL=String.fromCharCode(10);
-    var L=[], docs=collectDocs();
-    L.push('VuePoint deep scan');
-    L.push('url: '+location.href);
-    L.push('title: '+document.title);
-    L.push('agent: '+navigator.userAgent);
-    L.push('documents reachable: '+docs.length);
-    L.push('frames NOT readable (other origin): '+(BLOCKED_FRAMES.length?BLOCKED_FRAMES.join('  |  '):'none'));
-    L.push('');
-    L.push('How to read this: numbers, percents and "18 / 20" scores are verbatim.');
-    L.push('Header cells and visible page text are verbatim too - they are labels.');
-    L.push('\u00abtext:N\u00bb marks an assignment title or name that was redacted.');
-    for(var i=0;i<docs.length;i++) docScan(docs[i],i,L);
-    return L.join(NL);
   }
 
   /* ---------------------------- interactions ---------------------------- */
@@ -2468,7 +2216,8 @@ function run(){
     var earned=num(q('vp-e').value);
     var possible=num(q('vp-p').value);
     if(possible===null||possible<=0){ toast('Enter a "Possible" value above 0.'); return; }
-    if(earned===null) earned=0;
+    /* A blank score is "not graded yet", exactly as it is for a parsed row: the
+       row joins the list without touching the grade until a score is typed. */
     if(!(cat in state.weights)) state.weights[cat]=0;
     state.list.push({name:name.slice(0,90),category:cat||'Uncategorized',earned:earned,possible:possible,hypothetical:true});
     state.dirty=true;
@@ -2518,48 +2267,6 @@ function run(){
       renderAll();
       return;
     }
-    if(act==='diag'){
-      var d=q('vp-diag');
-      d.hidden=!d.hidden;
-      if(!d.hidden) q('vp-diag-pre').textContent=diagText();
-      var db=shadow.querySelector('[data-act="diag"]');
-      if(db) db.textContent=d.hidden?'Diagnostics':'Hide report';
-      return;
-    }
-    if(act==='diag-hide'){
-      q('vp-diag').hidden=true;
-      var db2=shadow.querySelector('[data-act="diag"]');
-      if(db2) db2.textContent='Diagnostics';
-      return;
-    }
-    if(act==='diag-deep'){
-      /* the impartial dump - reports the DOM as it is, including shapes the
-         parser never considered a candidate */
-      var dbox=q('vp-diag'), dpre=q('vp-diag-pre');
-      dbox.hidden=false;
-      dpre.textContent=deepScanText();
-      dpre.setAttribute('data-report','deep');
-      var db3=shadow.querySelector('[data-act="diag"]');
-      if(db3) db3.textContent='Hide report';
-      toast('Deep scan done - press Copy report.');
-      return;
-    }
-    if(act==='diag-copy'){
-      /* copy whatever is actually on screen, whatever produced it */
-      var pre=q('vp-diag-pre'), box=q('vp-diag');
-      var shownTxt=(box&&!box.hidden&&pre)?pre.textContent:'';
-      var txt=shownTxt||diagText();
-      try{
-        if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt);
-        else{
-          var ta=document.createElement('textarea');
-          ta.value=txt; host.appendChild(ta); ta.select();
-          document.execCommand('copy'); host.removeChild(ta);
-        }
-        toast('Diagnostics copied.');
-      }catch(err){ toast('Copy failed - open Diagnostics to read it.'); }
-      return;
-    }
   },true);
 
   shadow.addEventListener('input',function(e){
@@ -2572,8 +2279,8 @@ function run(){
       var a=state.list[parseInt(tr.getAttribute('data-i'),10)];
       if(!a) return;
       if(f==='name') a.name=String(t.value).slice(0,90);
-      else if(f==='earned'){ a.earned=num(t.value)===null?0:num(t.value); }
-      else if(f==='possible'){ var pv=num(t.value); a.possible=pv===null?0:Math.max(0,pv); }
+      else if(f==='earned'){ a.earned=num(t.value); }
+      else if(f==='possible'){ var pv=num(t.value); a.possible=pv===null?null:Math.max(0,pv); }
       state.dirty=true;
       paint();                       /* numbers only - the input keeps focus */
       return;
@@ -2611,8 +2318,8 @@ function run(){
       var a2=state.list[parseInt(tr2.getAttribute('data-i'),10)];
       if(!a2) return;
       var nv=num(t.value);
-      if(f==='earned') a2.earned=nv===null?0:nv;
-      else a2.possible=nv===null?0:Math.max(0,nv);
+      if(f==='earned') a2.earned=nv;
+      else a2.possible=nv===null?null:Math.max(0,nv);
       state.dirty=true;
       paint();
     }
@@ -2766,7 +2473,7 @@ function run(){
 
   applyParsed(parseAll());
   renderAll();
-  try{ host.setAttribute('data-vuepoint-version','1.1'); }catch(e){}
+  try{ host.setAttribute('data-vuepoint-version',VPVER); }catch(e){}
 }
 
 /* =============================== fatal path =============================== */
@@ -2784,6 +2491,7 @@ function fatal(err){
   sh.innerHTML='<div style="background:#fff;border:1px solid #fecaca;border-radius:12px;padding:14px 16px;font:12.5px/1.5 system-ui,sans-serif;color:#7f1d1d;box-shadow:0 8px 24px rgba(0,0,0,.18)">'+
     '<b style="font-size:13px">VuePoint could not start</b>'+
     '<div style="margin-top:6px;color:#3f5f5c">The page blocked part of the script. Nothing on the page was changed.</div>'+
+    '<div style="margin-top:6px;color:#3f5f5c">Still broken? <a href="'+SITE+'" target="_blank" rel="noopener noreferrer" style="color:#0f766e;font-weight:700;text-decoration:underline">Drag the bookmark again from the site</a> to replace this copy.</div>'+
     '<pre style="margin-top:8px;white-space:pre-wrap;font:11px/1.4 ui-monospace,monospace;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:8px">'+esc(msg)+'</pre>'+
     '<div style="margin-top:8px"><button id="vp-fatal-close" style="border:1px solid #fecaca;background:#fff;border-radius:6px;padding:5px 10px;font:600 12px system-ui;cursor:pointer">Close</button></div>'+
     '</div>';

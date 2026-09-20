@@ -4,6 +4,11 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>VuePoint</title>
+<!-- The version this page ships. The install script below reads it to tell a
+     visitor whose bookmark is older that a newer one is available; bump it
+     alongside the badge in the footer and data-vuepoint-version in
+     bookmarklet.js when you ship a release. -->
+<meta name="vuepoint-version" content="1.1"/>
 <!-- Umami Cloud (pageviews + custom events; free Hobby tier). The drag/copy
      handlers below call window.umami.track() when the library is present. -->
 <script defer src="https://cloud.umami.is/script.js" data-website-id="1f5e37a5-cd2b-4695-a8c0-adfcc65087a5"></script>
@@ -19,6 +24,14 @@
   body{margin:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg);line-height:1.5;font-size:16px}
   a{color:inherit;text-decoration:none}.wrap{max-width:1040px;margin:0 auto;padding:0 24px}
   header{position:sticky;top:0;z-index:30;background:rgba(240,253,250,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+  /* Anchor jumps. The header is sticky and 53px tall (52px nav + its border), so
+     a jump that parks a target at the top of the viewport leaves its heading
+     hidden behind the header - which reads as having scrolled too far down.
+     Stop short of the header instead. The two sections carry 22px of their own
+     top padding, so their id needs a smaller margin than the bare h2 for every
+     heading to land the same 16px below the bar. */
+  #use,#faq{scroll-margin-top:47px}
+  #features,#install{scroll-margin-top:69px}
   .nav{height:52px;display:flex;align-items:center;gap:10px}
   .logo-icon{width:28px;height:28px;border-radius:50%;background:var(--primary);display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px}
   .logo-icon svg{width:15px;height:15px;display:block}
@@ -87,6 +100,14 @@
   .hint-actions span{font-size:11px;color:var(--muted-fg)}
   .warn{margin-top:10px;display:flex;gap:8px;align-items:flex-start;background:#FFFBEB;border:1px solid #FDE68A;color:#92400E;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5}
   .warn svg{width:16px;height:16px;flex:0 0 16px;margin-top:1px}
+  /* Update reminder, shown by the script only when this browser last installed
+     an older build. Hidden in the markup, not merely styled away, so a visitor
+     with scripting disabled is never shown a claim we cannot verify. `display`
+     is stated in both states because a bare [hidden] loses to any class rule. */
+  .upd{display:none;gap:8px;align-items:flex-start;background:#ECFDF5;border:1px solid var(--border);color:var(--primary-dark);padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5;margin-bottom:12px}
+  .upd.on{display:flex}
+  .upd svg{width:16px;height:16px;flex:0 0 16px;margin-top:1px}
+  .upd b{font-weight:800}
   section{padding:22px 0}
   .sec-head{margin-bottom:20px}
   .sec-head h2{font-size:24px;letter-spacing:-.025em;margin:0;font-weight:800}
@@ -147,7 +168,7 @@
     .sec-head p{font-size:13.5px}
     .install-card{padding:16px}
     .drag-btn{font-size:15px;padding:13px 18px;gap:8px}
-    .hint-box,.warn{font-size:12.5px;padding:11px}
+    .hint-box,.warn,.upd{font-size:12.5px;padding:11px}
     .steps{gap:12px}
     .step{padding:16px}
     .step .vis{padding:10px;min-height:64px}
@@ -166,7 +187,7 @@
     .credit{font-size:12px;padding:14px 0}
     footer{padding:18px 0 22px}
     .footer-row{flex-direction:column;align-items:flex-start;gap:7px;text-align:left}
-    .hint-box,.warn,.desk-note,.demo-body{overflow-wrap:anywhere}
+    .hint-box,.warn,.desk-note,.demo-body,.upd{overflow-wrap:anywhere}
     .dragging-hint{max-width:calc(100vw - 32px)}
   }
   @media(max-width:480px){
@@ -226,6 +247,10 @@
     </div>
   </div>
   <div class="install-card" id="install">
+    <div class="upd" id="update-note" hidden role="status">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11A8 8 0 006.3 5.7L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0013.7 5.3L20 16"/><path d="M20 20v-4h-4"/></svg>
+      <div id="update-note-text"></div>
+    </div>
     <div class="install-label">Drag to your Bookmarks Bar</div>
     <div class="desk-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><div><b>Computers only.</b> VuePoint runs from a browser's Bookmarks Bar, so it needs a laptop or desktop. Phones and tablets can't run a bookmark like this.</div></div>
     <div class="drag-wrap">
@@ -292,15 +317,60 @@
 (function(){
   /* The bookmarklet URL lives in the button's href attribute (set at build time),
      so dragging the button onto the Bookmarks Bar works with no JavaScript. */
+  /* ------------------------------- update notice --------------------------
+     A bookmarklet cannot update itself: its URL is copied into the bookmarks
+     bar when it is installed and no page is allowed to rewrite a bookmark. So
+     the reminder has to live here. The version this browser last installed is
+     remembered locally at the moment the button is dragged (or its link
+     copied), and the next visit compares it with the version this page ships.
+     If they differ, the card says so and asks for a re-drag.
+
+     Entirely local: localStorage, no cookie, no request, nothing sent. It is
+     best-effort by design - storage can be blocked or cleared, and a bookmark
+     installed in one browser cannot be seen from another, so a missing record
+     simply means no notice rather than a wrong one. */
+  var VERSION=(function(){
+    var m=document.querySelector('meta[name="vuepoint-version"]');
+    return m?(m.getAttribute('content')||'').trim():'';
+  })();
+  var INSTALL_KEY='vuepoint.installed';
+  var note=document.getElementById('update-note');
+  function installed(){ try{ return localStorage.getItem(INSTALL_KEY)||''; }catch(e){ return ''; } }
+  /* Marked installed and hidden again in one step: the moment they drag or copy
+     it they are on this version, so the reminder has done its job. */
+  function remember(){
+    try{ localStorage.setItem(INSTALL_KEY,VERSION); }catch(e){}
+    showNote(false);
+  }
+  function showNote(on){
+    if(!note) return;
+    if(on) note.removeAttribute('hidden'); else note.setAttribute('hidden','');
+    note.className=on?'upd on':'upd';
+  }
+  (function(){
+    if(!note||!VERSION) return;
+    var have=installed();
+    if(!have||have===VERSION) return;
+    var t=document.getElementById('update-note-text');
+    if(t) t.innerHTML='<b>VuePoint v'+VERSION+' is out.</b> The copy in your Bookmarks Bar is v'+have+
+      '. Drag the button above onto the bar again and replace the old bookmark to update it.';
+    showNote(true);
+  })();
+
   var a=document.getElementById('vuepoint-bookmarklet');
   if(!a)return;
   /* Umami custom events are fire-and-forget: window.umami only exists once
      the deferred cloud script has loaded, so every call is guarded. A failed
      or blocked tracker never blocks or breaks an install attempt. */
   function track(name){try{if(window.umami&&window.umami.track)window.umami.track(name);}catch(e){}}
-  a.addEventListener('dragstart',function(){track('Dragged bookmarklet');});
+  a.addEventListener('dragstart',function(){
+    track('Dragged bookmarklet');
+    /* this is the moment they install it, so record what they installed */
+    remember();
+  });
   var cb=document.getElementById('copy-link'),st=document.getElementById('copy-status');
   function feedback(ok){
+    if(ok)remember();
     if(st)st.textContent=ok?'Copied to clipboard':'Could not copy. Right-click the button and choose "Copy link address"';
     if(cb){cb.textContent=ok?'Copied!':'Copy failed';setTimeout(function(){cb.textContent='Copy link';},2400);}
   }
