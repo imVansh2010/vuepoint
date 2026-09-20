@@ -40,12 +40,16 @@ function r2(n){ return isFinite(n)?Math.round(n*100)/100:n; }
 function pctText(n){ return (n===null||!isFinite(n))?'\u2014':r2(n).toFixed(2)+'%'; }
 function ptsText(n){ return (n===null||!isFinite(n))?'\u2014':(Math.round(n*100)/100); }
 
+/* Every cut-off sits on a HALF point, because the grade is rounded to the
+   nearest whole percent before it is read as a letter: 92.5 rounds to 93, so it
+   is an A - and 89.5 is an A-, down the scale. Sitting on the whole number put
+   a 92.5 on the wrong side of the line. */
 function letterFor(p){
   if(p===null||!isFinite(p)) return '\u2014';
-  if(p>=93) return 'A';  if(p>=90) return 'A-';
-  if(p>=87) return 'B+'; if(p>=83) return 'B';  if(p>=80) return 'B-';
-  if(p>=77) return 'C+'; if(p>=73) return 'C';  if(p>=70) return 'C-';
-  if(p>=67) return 'D+'; if(p>=63) return 'D';  if(p>=60) return 'D-';
+  if(p>=92.5) return 'A';  if(p>=89.5) return 'A-';
+  if(p>=86.5) return 'B+'; if(p>=82.5) return 'B';  if(p>=79.5) return 'B-';
+  if(p>=76.5) return 'C+'; if(p>=72.5) return 'C';  if(p>=69.5) return 'C-';
+  if(p>=66.5) return 'D+'; if(p>=62.5) return 'D';  if(p>=59.5) return 'D-';
   return 'F';
 }
 function colorFor(p){

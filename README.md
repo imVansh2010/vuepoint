@@ -25,6 +25,11 @@ The toggle picks which one drives the big number. On load VuePoint compares both
 against the grade StudentVUE is showing and defaults to whichever matches. A
 category with a 0 or blank weight is left out of the weighted total.
 
+The big number also carries a letter, and every cut-off sits on a half point:
+92.5% is an A, 89.5% an A-, and so on down the scale. That is deliberate — a
+grade rounds to the nearest whole percent before it takes a letter, so a 92.5
+belongs with the 93s, not below them.
+
 Schools run different StudentVUE versions, so VuePoint assumes nothing about the
 markup. It scans tables, ARIA grids and row groups inside every frame it can
 read, scores each candidate on how much it looks like a gradebook, and parses
