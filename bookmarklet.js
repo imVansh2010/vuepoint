@@ -66,6 +66,16 @@ function colorFor(p){
   if(p>=59.5) return '#c2410c';
   return '#b91c1c';
 }
+/* The Grade Book landing page prints a LETTER, not a percent, so the scale above
+   does not apply to it. Same palette, keyed on the letter. */
+function colorForMark(m){
+  var c=String(m===null||m===undefined?'':m).charAt(0).toUpperCase();
+  if(c==='A'||c==='B') return '#0f766e';
+  if(c==='C') return '#b45309';
+  if(c==='D') return '#c2410c';
+  if(c==='F') return '#b91c1c';
+  return '#475569';
+}
 /* "rendered?" check - hidden grading-period panels must be ignored */
 function shown(el){
   if(!el) return false;
@@ -1164,6 +1174,12 @@ function isPlaceholderClass(s){
   return false;
 }
 
+/* Panel labels, nav items and breadcrumbs are not class names. Synergy writes
+   its gradebook chrome as "VIEW COURSE CONTENT" and friends, and a [class*=]
+   match on "course" is exactly how that string ended up as the name of the
+   class the panel was showing. */
+var NAV_LABEL_RE=/^(grade\s*book|grade\s*book\s*list|view\s+course\s+content|course\s+content|assignments?|grade calculation summary|attendance|class schedule|report card|course history|synergy mail|calendar|documents|test history|school information|student info|home|messages)/i;
+
 function findCourse(docs){
   var candidates=[];
   for(var d=0;d<docs.length;d++){
@@ -1174,7 +1190,7 @@ function findCourse(docs){
       var marked=doc.querySelectorAll('[class*="course"],[id*="course"],[id*="Course"]');
       for(var i=0;i<marked.length&&i<40;i++){
         var t=norm(marked[i].textContent);
-        if(t&&t.length>=3&&t.length<=70&&/[A-Za-z]/.test(t)&&shown(marked[i])) candidates.push({t:t,w:2});
+        if(t&&t.length>=3&&t.length<=70&&/[A-Za-z]/.test(t)&&!NAV_LABEL_RE.test(t)&&shown(marked[i])) candidates.push({t:t,w:2});
       }
     }catch(e){}
     try{
@@ -1184,7 +1200,7 @@ function findCourse(docs){
         if(!t2||t2.length<3||t2.length>70||!/[A-Za-z]/.test(t2)) continue;
         if(!shown(hs[j])) continue;
         /* panel labels and nav items are not class names */
-        if(/^(grade\s*book|assignments?|grade calculation summary|attendance|class schedule|report card|course history|synergy mail|calendar|documents|test history|school information|student info|home|messages)/i.test(t2)) continue;
+        if(NAV_LABEL_RE.test(t2)) continue;
         candidates.push({t:t2,w:1});
       }
     }catch(e){}
@@ -1251,6 +1267,65 @@ function findCourse(docs){
   if(frozen) return '';
   var title=norm(document.title).replace(/\s*[|\u2013\u2014-]\s*StudentVUE.*$/i,'');
   return tidyCourseName(title);
+}
+
+/* ======================= all-classes landing page ======================= */
+
+/* The Grade Book landing page - the one you reach before opening any class - is
+   the only page in the portal that holds more than one class at once. It draws
+   one row group per class, every element of a group carrying the class id in
+   data-guid, and the group holds the class title ("3: CHEMISTRY") and the mark
+   StudentVUE is showing for it.
+
+   Nothing else in the portal looks like this: a class gradebook carries none of
+   these markers, so their presence is a safe signal for the landing page, and
+   it is the one place an overview of the whole schedule can be built without
+   asking the server for anything. Scraping it as if it were a gradebook is what
+   produced a merged pile of every class's category weights and a made-up 100%
+   page grade. */
+function parseClassList(doc){
+  var out=[], byGuid={}, els;
+  try{ els=doc.querySelectorAll('[data-guid]'); }catch(e){ return out; }
+  for(var i=0;i<els.length;i++){
+    var el=els[i], guid='';
+    try{ guid=norm(el.getAttribute('data-guid')); }catch(e2){ guid=''; }
+    if(!guid) continue;
+    var rec=byGuid[guid];
+    if(!rec){ rec=byGuid[guid]={id:guid,title:'',mark:''}; out.push(rec); }
+    /* The title and the mark sit in different rows of the same group (the
+       header row carries the title, the mark-period row the mark), so both are
+       looked for on every element of the group and merged onto its record. */
+    if(!rec.title){
+      var t=null;
+      try{ t=el.querySelector('.course-title'); }catch(e3){ t=null; }
+      if(t) rec.title=norm(t.textContent);
+    }
+    if(!rec.mark){
+      var m=null;
+      try{ m=el.querySelector('span.mark'); }catch(e4){ m=null; }
+      if(m) rec.mark=norm(m.textContent);
+    }
+  }
+  var list=[];
+  for(var k=0;k<out.length;k++){
+    var r=out[k];
+    if(!r.title) continue;                                  /* not a class row */
+    var name=r.title, per=null;
+    var mm=name.match(/^\s*(\d{1,2})\s*[:.\-]\s*(.+)$/);
+    if(mm){ per=inPeriodRange(parseInt(mm[1],10)); name=norm(mm[2]); }
+    if(!name||name.length>70) continue;
+    /* "N/A" is the absence of a mark, not a mark, and a long string here is
+       not one either (a trend label or a tooltip that happens to sit inside the
+       same row). */
+    var mark=norm(r.mark);
+    if(mark.length>4||!/^[A-Fa-f][+-]?$/.test(mark)) mark='';
+    list.push({id:r.id,period:per,name:name,mark:mark});
+  }
+  list.sort(function(a,b){
+    var ap=a.period===null?99:a.period, bp=b.period===null?99:b.period;
+    return ap-bp||a.name.localeCompare(b.name);
+  });
+  return list;
 }
 
 /* An assignment counts toward the grade only once it has a score. An empty
@@ -1332,9 +1407,16 @@ function parseAll(){
     if(parsed.length) list=parsed;
   }
 
-  var grade=findGrade(docs);
-  var w=findWeights(docs);
-  var course=findCourse(docs);
+  /* The landing page lists every class at once and has no class open, so it has
+     no single class's weights, grade or name to find - only the list. Reading
+     it anyway mixed every class's categories into one set and invented a 100%
+     page grade out of the class rows. */
+  var classList=[];
+  for(var d3=0;d3<docs.length;d3++) classList=classList.concat(parseClassList(docs[d3]));
+  var isListPage=classList.length>=2;   /* one row could be anything; a schedule is not */
+  var grade=isListPage?null:findGrade(docs);
+  var w=isListPage?{weights:{},source:'none',rows:0,sum:0}:findWeights(docs);
+  var course=isListPage?'':findCourse(docs);
 
   /* decide the grading mode */
   var tE=0,tP=0;
@@ -1381,6 +1463,7 @@ function parseAll(){
     originalPct:grade&&isFinite(grade.value)?grade.value:null,
     gradeInfo:grade,
     courseTitle:course,
+    classList:classList,
     onSV:looksLikeStudentVue(),
     /* `blocked` is the only metadata the panel reads: it drives the "this page
        has a frame I am not allowed to read" line in the empty state. */
@@ -1395,7 +1478,7 @@ function run(){
   /* ---------- state ---------- */
   var state={
     list:[], weights:{}, mode:'total', original:null, found:false, open:false,
-    dirty:false, course:'', onSV:true, meta:{}, pendingRow:null
+    dirty:false, course:'', onSV:true, meta:{}, pendingRow:null, classList:[]
   };
 
   var docs=collectDocs();
@@ -1620,6 +1703,19 @@ function run(){
     '.vp-mini-x:hover{background:rgba(255,255,255,.26)}',
     '.vp-mini-x svg{width:11px;height:11px;display:block;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round}',
     '.vp-empty{padding:18px 14px;text-align:center}',
+    /* The class list: period, course, and the mark StudentVUE is showing. The
+       mark is right-aligned on a shared column so it reads straight down. */
+    '.vp-cll{display:flex;flex-direction:column}',
+    '.vp-clr{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #f0f7f6}',
+    '.vp-clr:last-child{border-bottom:0}',
+    '.vp-clp{flex:0 0 22px;height:22px;border-radius:6px;background:#f0fdfa;border:1px solid #cbe6e2;color:#3f5f5c;font-size:10.5px;font-weight:700;display:grid;place-items:center}',
+    '.vp-clt{flex:1 1 auto;min-width:0;font-size:12px;font-weight:600;color:#0f2e2c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.vp-clg{flex:0 0 auto;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}',
+    /* The note is the card's foot, so it carries the bottom padding the cards
+       give their own feet (11px, the same as .vp-cta). It had none at all, so
+       the last line of text sat on the card's rounded edge - which reads as a
+       mistake as soon as the panel is scaled up on a large screen. */
+    '.vp-clh{font-size:11px;line-height:1.55;color:#3f5f5c;padding:10px 12px 11px;margin:0}',
     '.vp-guide{counter-reset:vps;padding:16px 15px 14px;text-align:left}',
     '.vp-guide h5{font-size:13.5px;font-weight:700;margin-bottom:5px}',
     '.vp-gp{font-size:11.5px;color:#3f5f5c;line-height:1.55;max-width:52ch}',
@@ -1723,6 +1819,15 @@ function run(){
         '</ol>',
         '<div class="vp-gfoot"><button class="vp-btn" data-act="rescan">Re-scan page</button></div>',
       '</section>',
+      /* The Grade Book landing page: every class at once, with the mark
+         StudentVUE is showing. It is where a student lands when they click
+         Grade Book, so it is the one place an overview of the whole schedule
+         can come from - and it needs nothing from the network to build it. */
+      '<section class="vp-sec" id="vp-clsec" hidden>',
+        '<h4>All classes <span id="vp-cln">0</span></h4>',
+        '<div class="vp-cll" id="vp-cll"></div>',
+        '<p class="vp-clh">These are the marks StudentVUE is showing. Open a class, let it load, then click VuePoint again to run what-ifs on it.</p>',
+      '</section>',
       /* Shown when the page has no gradebook on it at all - a class is not open,
          or StudentVUE is on some other screen. One sentence and one button: no
          report is generated here, so there is nothing to read or send. */
@@ -1776,6 +1881,7 @@ function run(){
     state.mode=p.modeGuess;
     state.original=p.originalPct;
     state.course=p.courseTitle||'';
+    state.classList=p.classList||[];
     state.found=state.list.length>0;
     state.meta=p.meta||{};
     state.gradeInfo=p.gradeInfo||null;
@@ -1861,14 +1967,16 @@ function run(){
        one, and a class open with no readable name still says so. Off StudentVUE
        the header says that instead, because "no class selected" on an unrelated
        page would read as a bug in the panel rather than the wrong tab. */
+    var clsCount=state.classList.length;
     q('vp-src').textContent=state.onSV
-      ?(state.open?(state.course||'Class open'):'No class selected')
+      ?(state.open?(state.course||'Class open'):(clsCount?'Grade Book \u2014 pick a class':'No class selected'))
       :'Not on StudentVUE';
     /* "Live" against a page that has no gradebook would be a lie, so the status
-       pip goes away entirely off the portal. */
+       pip goes away entirely off the portal. On the class list there is no
+       gradebook either, but the number of classes is a fact worth showing. */
     var badge=q('vp-state');
     badge.hidden=offSite;
-    badge.textContent=state.found?'Live':'Empty';
+    badge.textContent=state.found?'Live':(clsCount?clsCount+' classes':'Empty');
     badge.style.background=state.found?'rgba(255,255,255,.16)':'rgba(0,0,0,.22)';
 
     /* Advisory only, and hidden in the ordinary case. The success banner that
@@ -1966,7 +2074,14 @@ function run(){
        certainly not a demo of controls that cannot do anything on this page). */
     var guideEl=q('vp-guide');
     if(guideEl) guideEl.hidden=!offSite;
-    q('vp-empty').hidden=showGrade||offSite;
+    /* The class list replaces the empty card rather than sitting under it: on
+       that page nothing is wrong, the student simply has not opened a class
+       yet, and "no gradebook to read" would be a confusing thing to say while
+       eight of their classes are listed underneath it. */
+    var clSec=q('vp-clsec');
+    var showClasses=!offSite&&!showGrade&&clsCount>0;
+    if(clSec) clSec.hidden=!showClasses;
+    q('vp-empty').hidden=showGrade||offSite||showClasses;
   }
 
   function cssEscape(s){ return String(s).replace(/["\\]/g,'\\$&'); }
@@ -2034,9 +2149,29 @@ function run(){
     tb.appendChild(frag);
   }
 
+  /* One line per class: the period it sits in, the course, and its mark. */
+  function renderClassList(){
+    var box=q('vp-cll');
+    if(!box) return;
+    q('vp-cln').textContent=String(state.classList.length);
+    var frag=document.createDocumentFragment();
+    for(var i=0;i<state.classList.length;i++){
+      var c=state.classList[i];
+      var row=document.createElement('div');
+      row.className='vp-clr';
+      row.innerHTML='<span class="vp-clp">'+esc(c.period===null?'\u2022':String(c.period))+'</span>'+
+        '<span class="vp-clt" title="'+esc(c.name)+'">'+esc(c.name)+'</span>'+
+        '<b class="vp-clg" style="color:'+colorForMark(c.mark)+'">'+esc(c.mark||'\u2014')+'</b>';
+      frag.appendChild(row);
+    }
+    box.innerHTML='';
+    box.appendChild(frag);
+  }
+
   function renderAll(){
     renderWeights();
     renderRows();
+    renderClassList();
     paint();
   }
 

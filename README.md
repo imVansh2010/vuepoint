@@ -36,6 +36,26 @@ read, scores each candidate on how much it looks like a gradebook, and parses
 the winner. Category weights come from the
 "Grade Calculation Summary" table when it exists; otherwise from the totals row.
 
+**Why it reads the screen rather than the gradebook's own data.** Synergy holds
+the same assignment list VuePoint reads, so a probe was run on a live class to
+see whether reading that list would be more exact than reading the page. On this
+district's portal it would not. The computed grade object is never built at all -
+`AssignmentsGridWhatIfCalcObject` is absent, because Synergy withholds its what-if
+calculator from classes on an "interpretation scale" - and what is left is the
+assignment grid, whose rows carry the same display strings the page already
+shows (`"10 out of 10.0000"`, `"11.0000 Points Possible"`). Reading them would be
+swapping one string-parsing job for another, on a less-proven path, so the page
+stays the source.
+
+**One hard limit that follows from it.** The grid is configured
+`paging: {enabled: true, pageSize: 100}`, so StudentVUE renders 100 assignment
+rows per page. A class with more than 100 assignments in a grading period would
+be read from its first page only, and the total would come out short - a scheme
+VuePoint cannot detect from the page, and cannot correct, because it makes no
+network request and so cannot ask for page 2. No class here is within an order of
+magnitude of that, and the panel would have to guess at a pager's wording to warn
+about it, so it is recorded here rather than half-guarded in code.
+
 ## Tech stack
 
 No frameworks, no dependencies, no server: the whole thing is plain JavaScript,
@@ -116,6 +136,27 @@ button across again. A bookmarklet that runs on a foreign page cannot reach
 anything of ours by itself, so a click that opens the site is the only route
 left that does not turn every open into a network request.
 
+## The whole schedule
+
+The page you land on when you click Grade Book - before opening a class - lists
+every class with the mark StudentVUE is showing for it. That is the only page in
+the portal that holds more than one class at once, so it is the one place an
+overview of the whole schedule can come from, and VuePoint reads it as exactly
+that: period, course and mark, one line per class.
+
+It deliberately reads no weights, no grade and no class name from that page,
+because no single class is open there to attribute any of them to. Read as a
+gradebook it went badly wrong once: the category weights of all eight classes
+were merged into one set (picking up a `NaN` key from a stray cell), a 100% page
+grade was invented out of the class rows, and the panel announced "nothing is
+posted for this class yet" while no class was open at all.
+
+A class list is only acted on when it holds at least two classes, and its
+markers - `data-guid` groups carrying a `.course-title` and a `span.mark` - do
+not appear anywhere on a class gradebook, so the two pages can never be confused
+for each other. Open a class, let it load, then click the bookmark again to run
+what-ifs on it.
+
 ## Off StudentVUE
 
 The panel only reads StudentVUE. Opened anywhere else it shows the short route
@@ -146,6 +187,40 @@ real gradebook page, so they carry a student id, a district portal domain, a
 teacher name and real scores. Each run writes `test-run*.html`; open one in a
 browser and it prints its assertions, ending in `ALL CHECKS PASSED` or a list of
 failures.
+
+The Grade Book landing page gets its own generator, because none of the
+`mktest.js` fixtures cover it:
+
+```bash
+node make-classlist-fixture.js                      # against the readable source
+node make-classlist-fixture.js bookmarklet.min.js -min
+```
+
+It asserts the eight classes it must read, that the panel names the page rather
+than a class, and - the part that regressed before - that no gradebook section
+and no scraped weights or grade appear alongside them. Like the harness it needs
+its capture, `test-gradebook-classlist.html`, and skips itself without it.
+
+The ungraded row gets its own generator, because a probe of a live class showed
+the same column written two different ways:
+
+```bash
+node make-ungraded-points-fixture.js                      # against the readable source
+node make-ungraded-points-fixture.js bookmarklet.min.js -min
+```
+
+Every other fixture describes the Points cell of an assignment with no score yet
+as `10.00/10.0000` - earned over possible. On the portal it can also read
+`11.0000 Points Possible`: possible points with a label, no earned side, no
+slash. One column, two shapes, and only one of them was ever covered. An
+ungraded row has to come through both alike - present in the list, score box
+empty, possible points kept, and the grade unmoved. The generator rewrites only
+the rows that have no score, refuses to run if that leaves the graded row
+damaged, and exits non-zero if the capture no longer matches, so it can never
+pass by accident. Needs `test-gradebook-devexpress-ungraded.html`.
+
+`node mk-runner.js` then collects every `test-run*.html` into `test-all.html` as
+iframes, which is the quickest way to read the whole suite in one go.
 
 ## License
 

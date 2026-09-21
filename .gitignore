@@ -6,9 +6,12 @@
 # teacher name and real assignment scores. Keep the suite on this machine.
 mktest.js
 make-real-fixture.js
+make-classlist-fixture.js
+make-ungraded-points-fixture.js
 test-*.html
 
-# Throwaway check helpers and their output (see .freebuff/run.md)
+# Throwaway check helpers and their output (see .freebuff/run.md). Note this
+# does NOT cover the `make-*` fixture generators above, which are keepers.
 mk-*.js
 test-all.html
 wrap.html
