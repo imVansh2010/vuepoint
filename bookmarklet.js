@@ -2154,6 +2154,20 @@ function run(){
   }
   document.addEventListener('click',onDocClick,true);
 
+  /* The close button's tooltip promises Esc, and the panel's own keydown
+     listener only hears it while focus is inside the shadow - which is not the
+     state the panel opens in, so Esc did nothing until you had clicked a
+     control. This catches it wherever focus is. It deliberately ignores the
+     folded chip (`collapsed`): the panel has to be visibly open for Esc to mean
+     "close this", so a portal's own Esc shortcut is never swallowed while the
+     chip just sits in the corner. */
+  function onDocKey(e){
+    if(e.key!=='Escape'||collapsed) return;
+    if(host.getAttribute('data-closing')) return;
+    closePanel();
+  }
+  document.addEventListener('keydown',onDocKey);
+
   function closePanel(){
     if(host.getAttribute('data-closing')) return;
     host.setAttribute('data-closing','1');
@@ -2212,7 +2226,14 @@ function run(){
   function addAssignment(){
     var name=norm(q('vp-n').value)||'New assignment';
     var cat=q('vp-c').value;
-    if(cat==='__new__'){ askNewCat(null); return; }
+    if(cat==='__new__'){
+      askNewCat(null);
+      /* the same reset as a row's select: a cancelled add must not leave the
+         chooser stuck on "+ New category…" */
+      var firstCat=catNames()[0];
+      if(firstCat) q('vp-c').value=firstCat;
+      return;
+    }
     var earned=num(q('vp-e').value);
     var possible=num(q('vp-p').value);
     if(possible===null||possible<=0){ toast('Enter a "Possible" value above 0.'); return; }
@@ -2305,7 +2326,10 @@ function run(){
       var a=state.list[idx];
       if(!a) return;
       var v=t.value;
-      if(v==='__new__'){ askNewCat(idx); return; }
+      /* put the select back on the row's real category before opening the name
+         box: leaving it reading "+ New…" meant a cancelled add left the row
+         visibly claiming a category the assignment did not have */
+      if(v==='__new__'){ askNewCat(idx); t.value=a.category||''; return; }
       a.category=v;
       if(!(v in state.weights)) state.weights[v]=0;
       state.dirty=true;
@@ -2467,6 +2491,7 @@ function run(){
     if(toastTimer) clearTimeout(toastTimer);
     if(reattach){ try{ reattach.disconnect(); }catch(e){} reattach=null; }
     document.removeEventListener('click',onDocClick,true);
+    document.removeEventListener('keydown',onDocKey);
   };
 
   /* ------------------------------- boot ------------------------------- */
