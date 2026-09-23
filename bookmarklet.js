@@ -1656,12 +1656,28 @@ function run(){
        the whole panel already fits.
        The card gives up overflow:hidden for this, because a clipping ancestor
        is not a sticky scrollport - and then the two rows that touch the card's
-       edge have to draw the corners that the clipping used to provide. The
-       offset resolves against .vp-b's padding box, so the row stops just clear
-       of the footer rather than sitting welded to it. */
-    '#vp-asec{overflow:visible}',
+       edge have to draw the corners that the clipping used to provide.
+       The offset resolves against .vp-b's CONTENT box, not its padding box, so
+       a plain bottom:0 parked the row 11px high - and because the card no
+       longer clips, the assignment rows scrolled straight through that strip,
+       leaving a band of half a table under a row that was meant to look like
+       the card's bottom edge. -11px cancels that padding, so the stuck row's
+       bottom edge is the scrollport's bottom edge and meets the footer's top
+       border with nothing showing between them. It tracks .vp-b's padding
+       above, which is the one other place that 11px is written.
+       The row also draws the card's bottom edge, and the card no longer draws
+       one of its own. Two copies of a 1px border can never be relied on to
+       land on the same pixel - here they sat a fifth of a pixel apart and
+       rasterised as one thick grey line, which reads as the card's edge
+       doubling up with the divider beneath it. So the edge is handed to the row
+       rather than copied onto it, and because it then belongs to the element
+       that moves, it is crisp in both positions and needs no script to tell it
+       when to show. The row's radius is 10 where the card's is 11, the 1px its
+       box is inset by the card's side borders - so the side border's curve and
+       the row's meet on the same point at each corner. */
+    '#vp-asec{border-bottom:0;overflow:visible}',
     '#vp-asec>h4{border-radius:10px 10px 0 0}',
-    '#vp-asec>.vp-add{position:sticky;bottom:0;z-index:2;border-radius:0 0 10px 10px}',
+    '#vp-asec>.vp-add{position:sticky;bottom:-11px;z-index:2;border-bottom:1px solid #cbe6e2;border-radius:0 0 10px 10px}',
     /* No background tint: the strip's mint fill read as a squared-off green
        block sitting under the white panel. line-height:1 plus equal padding
        centres the text exactly rather than via the font's own metrics. */
@@ -2338,8 +2354,11 @@ function run(){
     return had;
   }
 
-  function askNewCat(pending){
-    state.pendingRow=pending;
+  /* `row` is the assignment the new category is for, or null when it comes from
+     the Add category button. It is stored as the row itself, never as its
+     position: adding an assignment inserts at the top and renumbers the list. */
+  function askNewCat(row){
+    state.pendingRow=row;
     q('vp-nc').hidden=false;
     q('vp-nci').value='';
     try{ q('vp-nci').focus(); }catch(e){}
@@ -2352,7 +2371,7 @@ function run(){
     var name=cleanCat(q('vp-nci').value);
     if(!name){ closeNewCat(); return; }
     if(!(name in state.weights)) state.weights[name]=0;
-    if(state.pendingRow!==null&&state.list[state.pendingRow]) state.list[state.pendingRow].category=name;
+    if(state.pendingRow) state.pendingRow.category=name;
     state.dirty=true;
     closeNewCat();
     renderAll();
@@ -2375,14 +2394,21 @@ function run(){
     /* A blank score is "not graded yet", exactly as it is for a parsed row: the
        row joins the list without touching the grade until a score is typed. */
     if(!(cat in state.weights)) state.weights[cat]=0;
-    state.list.push({name:name.slice(0,90),category:cat||'Uncategorized',earned:earned,possible:possible,hypothetical:true});
+    /* unshift, not push: a row you just typed is the one you are looking at,
+       and appending it put it below every assignment the page reported - off
+       the bottom of a full list, where it read as if the add had failed. */
+    state.list.unshift({name:name.slice(0,90),category:cat||'Uncategorized',earned:earned,possible:possible,hypothetical:true});
     state.dirty=true;
     q('vp-n').value=''; q('vp-e').value=''; q('vp-p').value='';
     renderAll();
     /* the row just added slides in. renderRows() rebuilds the tbody, so this
        class lives for one render only and never replays on a score edit. */
-    var fresh=q('vp-rows').lastElementChild;
+    var fresh=q('vp-rows').firstElementChild;
     if(fresh) fresh.classList.add('vp-new');
+    /* a long list carries its own scrollbar, and the new row is now at the top
+       of it: without this it would be added above the fold, out of sight. */
+    var box=q('vp-asec').querySelector('.vp-scroll');
+    if(box) box.scrollTop=0;
     try{ q('vp-n').focus(); }catch(e){}
   }
 
@@ -2464,7 +2490,7 @@ function run(){
       /* put the select back on the row's real category before opening the name
          box: leaving it reading "+ New…" meant a cancelled add left the row
          visibly claiming a category the assignment did not have */
-      if(v==='__new__'){ askNewCat(idx); t.value=a.category||''; return; }
+      if(v==='__new__'){ askNewCat(a); t.value=a.category||''; return; }
       a.category=v;
       if(!(v in state.weights)) state.weights[v]=0;
       state.dirty=true;
