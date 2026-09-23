@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>VuePoint</title>
+<title>VuePoint — StudentVUE Grade Calculator</title>
 <!-- The version this page ships. The install script below reads it to tell a
      visitor whose bookmark is older that a newer one is available; bump it
      alongside the badge in the footer and data-vuepoint-version in
@@ -12,9 +12,80 @@
 <!-- Umami Cloud (pageviews + custom events; free Hobby tier). The drag/copy
      handlers below call window.umami.track() when the library is present. -->
 <script defer src="https://cloud.umami.is/script.js" data-website-id="1f5e37a5-cd2b-4695-a8c0-adfcc65087a5"></script>
-<meta name="description" content="VuePoint is a bookmarklet for StudentVUE. It calculates hypothetical grades: change a score or add an assignment and see what the total would be. No login, nothing saved."/>
+<meta name="description" content="A StudentVUE hypothetical grade calculator: change a score or add a missing assignment to see what your grade would be. Free, no login, nothing sent."/>
 <meta name="color-scheme" content="light"/>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230D9488'/%3E%3Cpath d='M9.5 16.2l4.2 4.2 9.2-9.4' stroke='white' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E"/>
+<!-- The one URL this site is reachable at. Vercel also serves every preview
+     deployment under its own hostname, and a canonical is what stops those
+     copies from competing with this one in search results. -->
+<link rel="canonical" href="https://vuepoint.vercel.app/"/>
+<!-- Google Search Console, verified by meta tag (Search Console also offers an
+     HTML file at the site root; this is the one that was kept, so there is no
+     stray file to lose). Google re-checks the tag periodically, so removing it
+     un-verifies the property. -->
+<meta name="google-site-verification" content="Id7vPBCsnqgqbZFzLBEkZPiPb_D6fUlPEKdH9Pt2fbM"/>
+<!-- Structured data: tells search engines and their answer models that this page
+     is a free educational web app rather than an article. Two nodes, cross-
+     linked - the site, and the application it describes - because an app with
+     no site behind it is a weaker claim than the pair.
+
+     Nothing here is inferred or embellished. There is deliberately no
+     aggregateRating, no review and no screenshot: making up a rating is a
+     structured-data guidelines violation, not a shortcut, and it is the fastest
+     way to earn a manual action against the whole domain. There is no
+     softwareVersion either, on purpose - that would make a fourth place to bump
+     on every release, and a stale version claim is worse than none. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://vuepoint.vercel.app/#website",
+      "url": "https://vuepoint.vercel.app/",
+      "name": "VuePoint",
+      "inLanguage": "en",
+      "author": { "@type": "Person", "name": "Vansh Agarwal" }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://vuepoint.vercel.app/#app",
+      "name": "VuePoint",
+      "alternateName": "VuePoint StudentVUE grade calculator",
+      "url": "https://vuepoint.vercel.app/",
+      "description": "A free browser tool that calculates hypothetical grades on StudentVUE. Open a class gradebook, change a score or add an assignment you have not turned in yet, and the projected grade recalculates as you type, by category weights or by total points. It never changes the real grade: no login, no extension and nothing leaves the browser.",
+      "applicationCategory": "EducationalApplication",
+      "applicationSubCategory": "Grade calculator",
+      "operatingSystem": "Windows, macOS, Linux",
+      "browserRequirements": "Any desktop browser with a Bookmarks Bar: Chrome, Edge, Firefox or Safari.",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "audience": { "@type": "EducationalAudience", "educationalRole": "student" },
+      "isPartOf": { "@id": "https://vuepoint.vercel.app/#website" },
+      "author": { "@type": "Person", "name": "Vansh Agarwal" },
+      "featureList": [
+        "Edit an existing score and watch the projected grade update as you type",
+        "Add hypothetical assignments that have not been graded yet",
+        "Weighted-category and total-points grading, detected or switched by hand",
+        "Letter grades on half-point cut-offs, so 92.5% is an A",
+        "Runs entirely in the browser: no login, no account and no data sent",
+        "Never changes the real grade in StudentVUE - it only shows what a change would do"
+      ]
+    }
+  ]
+}
+</script>
+<!-- The icon in search results. Google only uses a favicon it can fetch as a
+     real URL, and only in BMP, GIF, ICO, PNG, JPEG, PPM or TIFF. The old icon
+     was an inline SVG data: URI - perfectly fine in a browser tab, invisible to
+     Google, because SVG is not a format it reads and a data: URI is not a URL it
+     can crawl. That is why results showed the default globe.
+
+     favicon.ico answers the path browsers and crawlers ask for by default;
+     favicon-192.png is the one Google reads, since it asks for an icon larger
+     than 48x48. Both come from `node make-favicon.js`, and the URLs are stable
+     on purpose - Google warns against moving them. -->
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48"/>
+<link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">

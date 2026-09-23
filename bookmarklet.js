@@ -1976,7 +1976,7 @@ function run(){
        gradebook either, but the number of classes is a fact worth showing. */
     var badge=q('vp-state');
     badge.hidden=offSite;
-    badge.textContent=state.found?'Live':(clsCount?clsCount+' classes':'Empty');
+    badge.textContent=state.found?'Live':(clsCount?clsCount+' class'+(clsCount===1?'':'es'):'Empty');
     badge.style.background=state.found?'rgba(255,255,255,.16)':'rgba(0,0,0,.22)';
 
     /* Advisory only, and hidden in the ordinary case. The success banner that
