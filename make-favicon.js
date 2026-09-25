@@ -1,8 +1,9 @@
 // Generates the site's favicon files from the VuePoint brand mark.
 //
-//   favicon.ico       16, 32, 48 in one file (the URL every browser and crawler
-//                     asks for by default)
-//   favicon-192.png   192x192, the one Google Search reads
+//   favicon.ico          16, 32, 48 in one file (the URL every browser and
+//                        crawler asks for by default)
+//   favicon-192.png      192x192, the one Google Search reads
+//   apple-touch-icon.png 180x180, what iOS puts on a saved home-screen icon
 //
 // Why these exist at all: the page used to carry its icon as an inline
 // `data:image/svg+xml` URI. That renders fine in a browser tab, but Google can
@@ -214,11 +215,37 @@ function encodeICO(sizes) {
   return Buffer.concat([dir].concat(entries).concat(images.map(function (i) { return i.data; })));
 }
 
+// iOS masks home-screen icons itself and renders whatever is transparent
+// BLACK, so the touch icon is the mark composited over a solid brand-teal
+// square - a full-bleed tile, the shape iOS expects - rather than the floating
+// disc the favicons keep.
+function flattenOver(rgb, size) {
+  var flat = Buffer.alloc(size * size * 4);
+  for (var i = 0; i < size * size; i++) {
+    flat[i * 4] = rgb[0];
+    flat[i * 4 + 1] = rgb[1];
+    flat[i * 4 + 2] = rgb[2];
+    flat[i * 4 + 3] = 255; // fully opaque - transparent corners would go black
+  }
+  var mark = render(size);
+  for (var p = 0; p < size * size; p++) {
+    var ma = mark[p * 4 + 3] / 255;
+    if (ma <= 0) continue;
+    flat[p * 4] = Math.round(mark[p * 4] * ma + flat[p * 4] * (1 - ma));
+    flat[p * 4 + 1] = Math.round(mark[p * 4 + 1] * ma + flat[p * 4 + 1] * (1 - ma));
+    flat[p * 4 + 2] = Math.round(mark[p * 4 + 2] * ma + flat[p * 4 + 2] * (1 - ma));
+  }
+  return flat;
+}
+
 // ----------------------------------------------------------------------- main
 var ICO_SIZES = [16, 32, 48];
+var TOUCH_SIZE = 180;
 
 fs.writeFileSync('favicon.ico', encodeICO(ICO_SIZES));
 fs.writeFileSync('favicon-192.png', encodePNG(render(192), 192));
+fs.writeFileSync('apple-touch-icon.png', encodePNG(flattenOver(DISC_FILL, TOUCH_SIZE), TOUCH_SIZE));
 
-console.log('favicon.ico     : ' + ICO_SIZES.join('/') + ' px, ' + fs.statSync('favicon.ico').size + ' bytes');
-console.log('favicon-192.png : 192 px, ' + fs.statSync('favicon-192.png').size + ' bytes');
+console.log('favicon.ico          : ' + ICO_SIZES.join('/') + ' px, ' + fs.statSync('favicon.ico').size + ' bytes');
+console.log('favicon-192.png      : 192 px, ' + fs.statSync('favicon-192.png').size + ' bytes');
+console.log('apple-touch-icon.png : ' + TOUCH_SIZE + ' px, ' + fs.statSync('apple-touch-icon.png').size + ' bytes');

@@ -29,6 +29,32 @@ function fail(msg) {
   process.exit(1);
 }
 
+// ------------------------------------------------- 0. version consistency
+// The release number is written by hand in three places: VPVER in
+// bookmarklet.js (stamps data-vuepoint-version and the panel footer), the
+// <meta name="vuepoint-version"> the update notice reads, and the badge in the
+// page footer. A release that ships two different numbers silently breaks the
+// update notice - it compares the installed number against the page's - so the
+// build refuses to run while any two disagree. Checked first, before the slow
+// minify, so the failure is instant.
+var srcText = fs.readFileSync('bookmarklet.js', 'utf8');
+var tplText = fs.readFileSync('index.template.html', 'utf8');
+
+function versionIn(label, text, re) {
+  var m = text.match(re);
+  if (!m) fail(label + ' not found');
+  return m[1];
+}
+var vSrc = versionIn('VPVER in bookmarklet.js', srcText, /var VPVER='([^']+)'/);
+var vMeta = versionIn('meta[name=vuepoint-version] in index.template.html', tplText, /<meta name="vuepoint-version" content="([^"]+)"/);
+var vBadge = versionIn('footer version badge in index.template.html', tplText, />(v[0-9.]+) \u00b7 no backend/);
+vBadge = vBadge.slice(1); // the badge carries a "v" prefix the others do not
+if (vSrc !== vMeta || vMeta !== vBadge) {
+  fail('version mismatch: bookmarklet.js VPVER=' + vSrc +
+       ', meta=' + vMeta + ', footer badge=' + vBadge);
+}
+console.log('version consistency : ' + vSrc + ' in all three places');
+
 // ---------------------------------------------------------------- 1. minify
 console.log('minifying bookmarklet.js ...');
 // One shell string (not an args array) so this works the same in cmd.exe,
