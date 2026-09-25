@@ -1357,7 +1357,13 @@ function looksLikeStudentVue(){
     var host=String(location.hostname||'');
     if(/edupoint\.com$/i.test(host)) return true;
     if(/studentvue|parentvue/i.test(host)) return true;
-    if(/StudentVUE/i.test(String(document.title||''))) return true;
+    /* Synergy always writes its app name at an END of the title - first or
+       last. Anchoring here keeps a page that only MENTIONS StudentVUE from
+       counting as the portal: this project's own landing page is titled
+       "VuePoint - StudentVUE Grade Calculator" for SEO, and an unanchored match
+       on it made the panel read the landing page like a gradebook instead of
+       showing the way back to the portal. */
+    if(/(^\s*StudentVUE)|(\bStudentVUE\s*$)/i.test(String(document.title||''))) return true;
     if(window.PXP) return true;
     if(document.getElementById('assignment-details')) return true;
     if(document.getElementById('CategoryWeights')) return true;
