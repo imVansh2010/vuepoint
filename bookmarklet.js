@@ -5,10 +5,21 @@ javascript:(function(){
    nothing is stored, no login, no backend.
    ------------------------------------------------------------------ */
 
-/* toggle: a second run of the bookmark puts the panel away */
+/* toggle: a second run of the bookmark puts the panel away. It leaves the way
+   the in-panel close button does it - the vpOut fade, then the node goes - so
+   clicking the bookmark again reads as a close rather than the panel being
+   yanked off the screen. __vuepointClose reaches into the running panel to do
+   exactly what the X does; it is nulled once the panel is gone, and a click
+   during the fade sees data-closing and does nothing. The hard removal below
+   is only for a half-built panel that never got as far as registering one. */
 if(document.getElementById('vuepoint-root')){
-  try{ if(window.__vuepointUnmount) window.__vuepointUnmount(); }catch(e){}
   var stale=document.getElementById('vuepoint-root');
+  if(stale.getAttribute('data-closing')) return;
+  try{
+    if(window.__vuepointClose){ window.__vuepointClose(); return; }
+    if(window.__vuepointUnmount) window.__vuepointUnmount();
+  }catch(e){}
+  window.__vuepointUnmount=null; window.__vuepointClose=null;
   if(stale&&stale.parentNode) stale.parentNode.removeChild(stale);
   return;
 }
@@ -2334,6 +2345,7 @@ function run(){
       gone=true;
       try{ if(window.__vuepointUnmount) window.__vuepointUnmount(); }catch(e){}
       window.__vuepointUnmount=null;
+      window.__vuepointClose=null;
       if(host.parentNode) host.parentNode.removeChild(host);
     }
     /* Whatever is on screen right now is what fades out - the panel normally,
@@ -2660,6 +2672,10 @@ function run(){
     document.removeEventListener('click',onDocClick,true);
     document.removeEventListener('keydown',onDocKey);
   };
+  /* The bookmark itself is the second way to close, and it lives outside this
+     closure - this is the door that lets the toggle at the top reach the same
+     animated closePanel the X button uses. */
+  window.__vuepointClose=closePanel;
 
   /* ------------------------------- boot ------------------------------- */
 

@@ -152,7 +152,7 @@
      Stop short of the header instead. The two sections carry 22px of their own
      top padding, so their id needs a smaller margin than the bare h2 for every
      heading to land the same 16px below the bar. */
-  #use,#faq{scroll-margin-top:47px}
+  #use,#faq,#feedback{scroll-margin-top:47px}
   #features,#install{scroll-margin-top:69px}
   .nav{height:52px;display:flex;align-items:center;gap:10px}
   .logo-icon{width:28px;height:28px;border-radius:50%;background:var(--primary);display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px}
@@ -270,6 +270,24 @@
   .faq h3{margin:0 0 6px;font-size:13px;font-weight:700;display:flex;gap:8px;align-items:center}
   .faq h3 svg{width:20px;height:20px;flex:0 0 20px;color:var(--primary)}
   .faq p{margin:0;color:var(--muted-fg);font-size:12.5px;line-height:1.55}
+  /* The feedback band. One card, one address: the mailto link does the sending
+     and the copy button is for anyone whose mail app is not hooked up to the
+     browser. Same card geometry as the install box above it, so the page reads
+     as one design rather than a contact form bolted on. */
+  .fb{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+  .fb-icon{width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:var(--muted);border:1px solid var(--border);display:grid;place-items:center;color:var(--primary)}
+  .fb-icon svg{width:22px;height:22px;display:block}
+  .fb-body{flex:1;min-width:260px}
+  .fb-body h3{margin:0 0 4px;font-size:15px;font-weight:800}
+  .fb-body p{margin:0;color:var(--muted-fg);font-size:13px;line-height:1.55;max-width:56ch}
+  .fb-mail{display:inline-block;margin-top:7px;font-weight:700;font-size:14px;color:var(--primary-dark)}
+  .fb-mail:hover{text-decoration:underline}
+  .fb-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .fb-btn{display:inline-flex;align-items:center;justify-content:center;background:var(--primary-dark);color:#fff;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;transition:opacity .15s}
+  .fb-btn:hover{opacity:.88}
+  .fb-copy{border:1px solid var(--border-neutral);background:var(--card);padding:9px 12px;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer;color:var(--fg);font-family:inherit;transition:opacity .15s}
+  .fb-copy:hover{opacity:.75}
+  #copy-email-status{font-size:11px;color:var(--muted-fg)}
   .faq kbd{font-family:inherit;background:var(--bg);border:1px solid var(--border-neutral);border-bottom-width:2px;padding:1px 5px;border-radius:4px;font-size:11.5px;font-weight:700;color:var(--fg)}
   .credit{border-top:1px solid var(--border-neutral);background:linear-gradient(180deg,#f5fdfb,#fff);padding:16px 0;text-align:center;color:var(--muted-fg);font-size:12.5px}
   .credit b{color:var(--primary-dark);font-weight:700}
@@ -290,6 +308,7 @@
     .sec-head h2{font-size:20px}
     .sec-head p{font-size:13.5px}
     .install-card{padding:16px}
+    .fb{padding:16px;gap:13px}
     .drag-btn{font-size:15px;padding:13px 18px;gap:8px}
     .hint-box,.warn,.upd{font-size:12.5px;padding:11px}
     .steps{gap:12px}
@@ -355,7 +374,7 @@
       <span class="logo-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 12.2 10.3 16 17.5 8"/></svg></span>
       VuePoint
     </div>
-    <nav class="nav-links" aria-label="Primary"><a href="#install">Install</a><a href="#use">How to use</a><a href="#features">Features</a><a href="#faq">FAQ</a></nav>
+    <nav class="nav-links" aria-label="Primary"><a href="#install">Install</a><a href="#use">How to use</a><a href="#features">Features</a><a href="#faq">FAQ</a><a href="#feedback">Feedback</a></nav>
   </div>
 </header>
 <div class="hero"><div class="wrap"><div class="hero-grid">
@@ -432,6 +451,23 @@
     <div class="faq"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Does it need internet?</h3><p>No. The bookmarklet is self-contained and makes no network requests. It works offline once the gradebook has loaded.</p></div>
   </div>
   <div style="margin-top:14px;background:var(--muted);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 28px"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div style="font-size:12.5px;line-height:1.55;color:var(--fg)"><b>Teacher or IT admin?</b> VuePoint reads the gradebook already open in your window, the same rows your browser rendered, and works out the scores and category weights from them locally. Nothing is sent anywhere.</div></div>
+</div></section>
+<div class="divider-wrap"><hr class="section-divider"/></div>
+<section id="feedback" style="padding:22px 0 28px"><div class="wrap">
+  <div class="sec-head"><h2>Found a bug? Have an idea?</h2><p>VuePoint is made by one student, and the best features so far came from people writing in. Issues, feature requests and "it broke here" notes all go to the same inbox.</p></div>
+  <div class="fb">
+    <div class="fb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
+    <div class="fb-body">
+      <h3>Send feedback</h3>
+      <p>A one-line note is welcome. For bugs, the most useful thing is what you clicked and what you expected to happen - no grades or personal details needed.</p>
+      <a class="fb-mail" href="mailto:agrwlvansh@gmail.com">agrwlvansh@gmail.com</a>
+    </div>
+    <div class="fb-actions">
+      <a class="fb-btn" href="mailto:agrwlvansh@gmail.com?subject=VuePoint%20feedback">Email feedback</a>
+      <button class="fb-copy" id="copy-email">Copy address</button>
+      <span id="copy-email-status"></span>
+    </div>
+  </div>
 </div></section>
 <div class="credit"><div class="wrap">Made by <b>Vansh Agarwal</b></div></div>
 <footer><div class="wrap footer-row"><div><b style="color:var(--fg)">VuePoint</b> is a StudentVUE gradebook helper. Not affiliated with Edupoint / Synergy. <span style="border:1px solid var(--border-neutral);background:var(--muted);padding:1px 5px;border-radius:3px;font-size:10px">v1.1 · no backend · cookieless analytics</span></div><div><span>Install above, then open any <b>StudentVUE Grade Book</b> page</span></div></div></footer>
@@ -528,6 +564,33 @@
     document.body.appendChild(d);
     setTimeout(function(){d.style.transition='opacity .2s';d.style.opacity='0';setTimeout(function(){d.remove();},220);},3000);
     window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  /* Feedback address, copied. Kept separate from the bookmark copy above on
+     purpose: that one also records the install, and a person copying an email
+     address has installed nothing. Same clipboard dance - writeText can be
+     refused without user activation or in managed school profiles, so the
+     textarea fallback always runs and the button always answers. */
+  var eb=document.getElementById('copy-email'),es=document.getElementById('copy-email-status');
+  function emailFeedback(ok){
+    if(es)es.textContent=ok?'Copied':'Could not copy';
+    if(eb){eb.textContent=ok?'Copied!':'Copy failed';setTimeout(function(){eb.textContent='Copy address';},2400);}
+  }
+  function emailLegacyCopy(text){
+    try{
+      var t=document.createElement('textarea');
+      t.value=text;t.setAttribute('readonly','');
+      t.style.cssText='position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(t);t.select();
+      var ok=document.execCommand('copy');
+      t.remove();emailFeedback(ok);
+    }catch(e){emailFeedback(false);}
+  }
+  if(eb)eb.addEventListener('click',function(){
+    track('Clicked copy email');
+    var v='agrwlvansh@gmail.com';
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).then(function(){emailFeedback(true);},function(){emailLegacyCopy(v);});}
+    else{emailLegacyCopy(v);}
   });
 })();
 </script>
