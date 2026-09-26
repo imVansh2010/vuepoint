@@ -763,7 +763,12 @@ function parseAssignments(g, headerIdx, roles){
     if(earned===null||possible===null){
       if(!(nameIdx>=0&&name)) continue;
       if(g.rows[r].el&&!shown(g.rows[r].el)) continue;
-      var ikey=name.toLowerCase()+'|'+cat.toLowerCase()+'|ungraded';
+      /* By ROW POSITION, not content. Two genuinely different rows can share
+         a name and a score ("Warm-up 5/5" on three days), and a content key
+         silently dropped all but one of them - undercounting the grade. Rows
+         within a grid are unique already, so this only guards against a row
+         ever being visited twice. */
+      var ikey='#'+r;
       if(seen[ikey]) continue;
       seen[ikey]=1;
       list.push({name:name,category:cat,earned:null,possible:(possible>0?possible:null),ungraded:true,hypothetical:false});
@@ -772,7 +777,7 @@ function parseAssignments(g, headerIdx, roles){
     if(!(possible>0)||possible>100000) continue;
     if(!isFinite(earned)||earned>possible*2+1) continue;
 
-    var key=name.toLowerCase()+'|'+cat.toLowerCase()+'|'+earned+'|'+possible;
+    var key='#'+r;                      /* same reasoning as ikey above */
     if(seen[key]) continue;
     seen[key]=1;
     list.push({name:name,category:cat,earned:earned,possible:possible,ungraded:false,hypothetical:false});
@@ -1729,6 +1734,14 @@ function run(){
     '@keyframes vpUnfold{from{opacity:0;transform:translate(9px,-12px) scale(.94)}to{opacity:1;transform:none}}',
     '.vp-fold{animation:vpFold .19s cubic-bezier(.4,0,.7,1) forwards}',
     '@keyframes vpFold{to{opacity:0;transform:translate(8px,-34px) scale(.9)}}',
+    /* The chip's exit: the exact reverse of vpUnfold, so dismissing it - its
+       X, or clicking the bookmark again - returns it to the corner it dropped
+       in from. Ruled on .vp-mini.vp-out because that is the class closePanel
+       stamps on whatever is on screen; before this rule existed only the
+       shell had one (.vp.vp-out above) and the chip popped out on the bare
+       fallback timer. */
+    '.vp-mini.vp-out{animation:vpFoldOut .18s cubic-bezier(.4,0,.7,1) forwards}',
+    '@keyframes vpFoldOut{to{opacity:0;transform:translate(9px,-12px) scale(.94)}}',
     '.vp-mini-main{display:flex;align-items:center;gap:7px;height:26px;padding:0 9px 0 4px;border:0;border-radius:99px;background:transparent;color:#fff;font-weight:600;font-size:12px;line-height:1;cursor:pointer;transition:background .15s}',
     '.vp-mini-main:hover{background:rgba(255,255,255,.13)}',
     '.vp-mini .vp-logo{width:22px;height:22px;flex:0 0 22px}',
@@ -1859,7 +1872,7 @@ function run(){
       '<section class="vp-sec" id="vp-clsec" hidden>',
         '<h4>All classes <span id="vp-cln">0</span></h4>',
         '<div class="vp-cll" id="vp-cll"></div>',
-        '<p class="vp-clh">These are the marks StudentVUE is showing. Open a class, let it load, then click VuePoint again to run what-ifs on it.</p>',
+        '<p class="vp-clh">Open a class, then click VuePoint to run what-ifs.</p>',
       '</section>',
       /* Shown when the page has no gradebook on it at all - a class is not open,
          or StudentVUE is on some other screen. One sentence and one button: no
@@ -2357,8 +2370,9 @@ function run(){
     host.style.pointerEvents='none';
     target.classList.add('vp-out');
     target.addEventListener('animationend',function(e){
-      /* child animations bubble up here, so match this element's own vpOut */
-      if(e.target===target&&e.animationName==='vpOut') finish();
+      /* child animations bubble up here, so match this element's own exit -
+         vpOut for the shell, vpFoldOut for the chip */
+      if(e.target===target&&(e.animationName==='vpOut'||e.animationName==='vpFoldOut')) finish();
     });
     setTimeout(finish,300);
   }
@@ -2540,15 +2554,23 @@ function run(){
   (function(){
     var handle=shadow.querySelector('[data-drag]');
     if(!handle) return;
-    var sx=0,sy=0,ox=0,oy=0,dragging=false;
+    var sx=0,sy=0,ox=0,oy=0,z=1,dragging=false;
     handle.addEventListener('pointerdown',function(e){
       if(e.button!==undefined&&e.button!==0) return;
       var t=e.target;
       if(t&&t.closest&&t.closest('button,input,select,a,label')) return;
       dragging=true;
       try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+      /* getBoundingClientRect reports VISUAL pixels, while left/top are laid
+         out in the host's own coordinate space - and a page that sets zoom on
+         its body (this project's own site does, on big screens) scales the two
+         differently. Writing one straight into the other made the panel jump
+         on the first drag and trail the cursor afterwards, so the zoom is
+         divided out here exactly as the landing page's own hint placement
+         does. Pages without zoom give z=1 and nothing changes. */
+      z=parseFloat(getComputedStyle(document.body).zoom)||1;
       var r=host.getBoundingClientRect();
-      sx=e.clientX; sy=e.clientY; ox=r.left; oy=r.top;
+      sx=e.clientX; sy=e.clientY; ox=r.left/z; oy=r.top/z;
       /* switch off the vertical-centring transform before taking over with
          absolute coordinates, or the panel jumps on first drag */
       host.style.transform='none';
@@ -2561,8 +2583,13 @@ function run(){
     });
     handle.addEventListener('pointermove',function(e){
       if(!dragging) return;
-      host.style.left=Math.max(0,(ox+e.clientX-sx))+'px';
-      host.style.top=Math.max(0,(oy+e.clientY-sy))+'px';
+      /* Clamped on all four sides. Only the top-left pair used to be, so one
+         wild drag could park the whole panel outside the window with nothing
+         left on screen to grab it back by. The far edges keep 80px x 40px of
+         the panel visible - enough of the header to hold and drag back. */
+      var maxX=Math.max(0,window.innerWidth/z-80), maxY=Math.max(0,window.innerHeight/z-40);
+      host.style.left=Math.min(maxX,Math.max(0,ox+(e.clientX-sx)/z))+'px';
+      host.style.top=Math.min(maxY,Math.max(0,oy+(e.clientY-sy)/z))+'px';
     });
     function stop(){
       if(!dragging) return;

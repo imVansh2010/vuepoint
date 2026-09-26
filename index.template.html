@@ -160,6 +160,12 @@
   .brand{font-weight:800;font-size:17px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
   .nav-links{margin-left:auto;display:flex;gap:20px;align-items:center;font-weight:600;font-size:13px;color:var(--muted-fg)}
   .nav-links a:hover{color:var(--fg)}
+  /* Small screens get a hamburger instead of the link row. The button is
+     always in the markup and simply hidden above the breakpoint, so there is
+     one set of links and one nav landmark to keep in sync. */
+  .nav-burger{display:none;width:34px;height:34px;padding:0;border:1px solid var(--border);background:var(--card);border-radius:8px;color:var(--fg);cursor:pointer;align-items:center;justify-content:center;transition:opacity .15s}
+  .nav-burger:hover{opacity:.75}
+  .nav-burger svg{width:18px;height:18px;display:block}
   .hero{background:var(--bg-alt);padding:30px 0 28px}
   .hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;padding:16px 0}
   .eyebrow{display:inline-flex;align-items:center;gap:6px;background:var(--muted);border:1px solid var(--border);padding:5px 10px;border-radius:4px;font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--primary-dark)}
@@ -270,17 +276,15 @@
   .faq h3{margin:0 0 6px;font-size:13px;font-weight:700;display:flex;gap:8px;align-items:center}
   .faq h3 svg{width:20px;height:20px;flex:0 0 20px;color:var(--primary)}
   .faq p{margin:0;color:var(--muted-fg);font-size:12.5px;line-height:1.55}
-  /* The feedback band. One card, one address: the mailto link does the sending
-     and the copy button is for anyone whose mail app is not hooked up to the
-     browser. Same card geometry as the install box above it, so the page reads
-     as one design rather than a contact form bolted on. */
+  /* The feedback band. Heading, one card, one address - the mailto link does
+     the sending and the copy button is for anyone whose mail app is not hooked
+     up to the browser. Same card geometry as the install box above it, so the
+     page reads as one design rather than a contact form bolted on. */
   .fb{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
   .fb-icon{width:44px;height:44px;flex:0 0 44px;border-radius:10px;background:var(--muted);border:1px solid var(--border);display:grid;place-items:center;color:var(--primary)}
   .fb-icon svg{width:22px;height:22px;display:block}
   .fb-body{flex:1;min-width:260px}
-  .fb-body h3{margin:0 0 4px;font-size:15px;font-weight:800}
-  .fb-body p{margin:0;color:var(--muted-fg);font-size:13px;line-height:1.55;max-width:56ch}
-  .fb-mail{display:inline-block;margin-top:7px;font-weight:700;font-size:14px;color:var(--primary-dark)}
+  .fb-mail{display:inline-block;font-weight:700;font-size:15px;color:var(--primary-dark)}
   .fb-mail:hover{text-decoration:underline}
   .fb-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .fb-btn{display:inline-flex;align-items:center;justify-content:center;background:var(--primary-dark);color:#fff;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;transition:opacity .15s}
@@ -332,8 +336,17 @@
     .hint-box,.warn,.desk-note,.demo-body,.upd{overflow-wrap:anywhere}
     .dragging-hint{max-width:calc(100vw - 32px)}
   }
+  @media(max-width:520px){
+    /* The five links in a row need over 400px before they crowd the brand, so
+       below this width they move into a dropdown behind the hamburger. Above
+       it they stay a plain row and the button vanishes. */
+    .nav-burger{display:flex}
+    .nav-links{display:none;position:absolute;top:calc(100% + 8px);right:16px;left:auto;margin:0;flex-direction:column;align-items:stretch;gap:0;min-width:172px;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 28px -12px rgba(15,23,42,.22);padding:6px;z-index:40}
+    .nav-links.open{display:flex}
+    .nav-links a{padding:10px 12px;border-radius:7px;font-size:13px}
+    .nav-links a:hover{background:var(--bg)}
+  }
   @media(max-width:480px){
-    .nav-links{gap:12px;font-size:12px}
     .brand{font-size:16px}
     .features{grid-template-columns:1fr}
     .chip{font-size:11.5px;padding:5px 9px}
@@ -344,7 +357,6 @@
     .mock-tbl{font-size:10.5px}
   }
   @media(max-width:400px){
-    .nav-links{display:none}
     .wrap{padding:0 14px}
     .drag-btn{font-size:14px;padding:12px 14px}
     .hint-box kbd{padding:1px 4px;font-size:11px}
@@ -374,7 +386,8 @@
       <span class="logo-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 12.2 10.3 16 17.5 8"/></svg></span>
       VuePoint
     </div>
-    <nav class="nav-links" aria-label="Primary"><a href="#install">Install</a><a href="#use">How to use</a><a href="#features">Features</a><a href="#faq">FAQ</a><a href="#feedback">Feedback</a></nav>
+    <nav class="nav-links" id="nav-menu" aria-label="Primary"><a href="#install">Install</a><a href="#use">How to use</a><a href="#features">Features</a><a href="#faq">FAQ</a><a href="#feedback">Feedback</a></nav>
+    <button class="nav-burger" id="nav-burger" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="nav-menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg></button>
   </div>
 </header>
 <div class="hero"><div class="wrap"><div class="hero-grid">
@@ -454,12 +467,10 @@
 </div></section>
 <div class="divider-wrap"><hr class="section-divider"/></div>
 <section id="feedback" style="padding:22px 0 28px"><div class="wrap">
-  <div class="sec-head"><h2>Found a bug? Have an idea?</h2><p>VuePoint is made by one student, and the best features so far came from people writing in. Issues, feature requests and "it broke here" notes all go to the same inbox.</p></div>
+  <div class="sec-head"><h2>Found a bug? Have an idea?</h2></div>
   <div class="fb">
     <div class="fb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
     <div class="fb-body">
-      <h3>Send feedback</h3>
-      <p>A one-line note is welcome. For bugs, the most useful thing is what you clicked and what you expected to happen - no grades or personal details needed.</p>
       <a class="fb-mail" href="mailto:agrwlvansh@gmail.com">agrwlvansh@gmail.com</a>
     </div>
     <div class="fb-actions">
@@ -514,6 +525,37 @@
       '. Drag the button above onto the bar again and replace the old bookmark to update it.';
     showNote(true);
   })();
+
+  /* Small screens: the link row folds into a hamburger. A plain dropdown under
+     the sticky header, toggled here rather than with a checkbox hack so it can
+     also close on Escape, on an outside click and on any link press - and so
+     aria-expanded always tells the truth. Resizing back to a wide window
+     closes it too: up there the class styles nothing and the stale aria would
+     be a lie. */
+  var burger=document.getElementById('nav-burger'),nmenu=document.getElementById('nav-menu');
+  function menuOpen(on){
+    if(!burger||!nmenu) return;
+    nmenu.classList.toggle('open',on);
+    burger.setAttribute('aria-expanded',on?'true':'false');
+    burger.setAttribute('aria-label',on?'Close menu':'Open menu');
+  }
+  if(burger&&nmenu){
+    burger.addEventListener('click',function(){
+      menuOpen(!nmenu.classList.contains('open'));
+    });
+    nmenu.addEventListener('click',function(e){
+      if(e.target.closest&&e.target.closest('a')) menuOpen(false);
+    });
+    document.addEventListener('click',function(e){
+      if(!nmenu.contains(e.target)&&!burger.contains(e.target)) menuOpen(false);
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape') menuOpen(false);
+    });
+    window.addEventListener('resize',function(){
+      if(window.innerWidth>520) menuOpen(false);
+    });
+  }
 
   var a=document.getElementById('vuepoint-bookmarklet');
   if(!a)return;
