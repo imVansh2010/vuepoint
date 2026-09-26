@@ -10,9 +10,57 @@
      bookmarklet.js when you ship a release. -->
 <meta name="vuepoint-version" content="1.1"/>
 <!-- Umami Cloud (pageviews + custom events; free Hobby tier). The drag/copy
-     handlers below call window.umami.track() when the library is present. -->
-<script defer src="https://cloud.umami.is/script.js" data-website-id="1f5e37a5-cd2b-4695-a8c0-adfcc65087a5"></script>
+     handlers below call window.umami.track() when the library is present.
+
+     Three switches keep test traffic out of the stats, and none of them
+     touches a real visitor. All three are Umami's own mechanisms, read out of
+     its tracker script rather than invented here:
+
+     1. data-domains lists the only hostname worth counting. Previews on
+        localhost, file:// and *.vercel.app deployment URLs fall outside it,
+        so every automated and local test session reports nothing.
+     2. data-do-not-track="true" makes the tracker obey a browser's Do Not
+        Track setting. A visitor who has asked not to be tracked is not
+        counted - remove this attribute if every non-test visit must count.
+     3. localStorage['umami.disabled'] is a kill switch the tracker checks on
+        every send. The snippet below turns it on for browsers driving
+        automation (the testing panel is always navigator.webdriver), and
+        hand-loads it on any machine you test with by hand: open
+        ?no-analytics once on the live site and that browser goes quiet for
+        good. ?analytics-on turns it back on.
+
+     The snippet runs before the deferred tracker, so the decision is in place
+     before the first pageview can be sent. -->
+<script>
+  (function () {
+    try {
+      var s = location.search;
+      if (s.indexOf('no-analytics') !== -1) {
+        localStorage.setItem('umami.disabled', '1');
+        history.replaceState(null, '', location.pathname + location.hash);
+      } else if (s.indexOf('analytics-on') !== -1) {
+        localStorage.removeItem('umami.disabled');
+        history.replaceState(null, '', location.pathname + location.hash);
+      }
+      if (navigator.webdriver) localStorage.setItem('umami.disabled', '1');
+    } catch (e) {}
+  })();
+</script>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="1f5e37a5-cd2b-4695-a8c0-adfcc65087a5" data-domains="vuepoint.vercel.app" data-do-not-track="true"></script>
 <meta name="description" content="A StudentVUE hypothetical grade calculator: change a score or add a missing assignment to see what your grade would be. Free, no login, nothing sent."/>
+<!-- Open Graph / Twitter cards. Beyond social shares, these are extra title
+     signals: Google lists og:title among the sources it rewrites a title link
+     from when it disagrees with <title>, so these stay word-for-word identical
+     to the <title> and description above - two spellings of the name is how a
+     search result ends up picking the short one. -->
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="VuePoint"/>
+<meta property="og:title" content="VuePoint - StudentVUE Grade Calculator"/>
+<meta property="og:description" content="A StudentVUE hypothetical grade calculator: change a score or add a missing assignment to see what your grade would be. Free, no login, nothing sent."/>
+<meta property="og:url" content="https://vuepoint.vercel.app/"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="VuePoint - StudentVUE Grade Calculator"/>
+<meta name="twitter:description" content="A StudentVUE hypothetical grade calculator: change a score or add a missing assignment to see what your grade would be. Free, no login, nothing sent."/>
 <meta name="color-scheme" content="light"/>
 <!-- The one URL this site is reachable at. Vercel also serves every preview
      deployment under its own hostname, and a canonical is what stops those

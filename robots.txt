@@ -1,0 +1,7 @@
+# VuePoint is a single page. Nothing is disallowed: Google must be able to
+# fetch /favicon.ico and /favicon-192.png themselves to show the icon in
+# search results - there is no way to "upload" a favicon to Google.
+User-agent: *
+Allow: /
+
+Sitemap: https://vuepoint.vercel.app/sitemap.xml

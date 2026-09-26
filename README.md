@@ -80,6 +80,9 @@ Edit these:
 - `build.js`: the build script. Plain Node, no dependencies.
 - `make-favicon.js`: draws the brand mark into the three icon files. Edit the
   numbers at the top rather than an image editor, then re-run it.
+- `robots.txt`, `sitemap.xml`: served from the site root as-is. `robots.txt`
+  allows everything (Google must be able to fetch the favicon files itself)
+  and points crawlers at the one-entry sitemap.
 
 Generated, do not edit:
 
@@ -220,6 +223,29 @@ no `softwareVersion`. Two of those are deliberate and should stay that way: an
 invented rating is a structured-data guidelines violation rather than a
 shortcut, and a `softwareVersion` would add a fourth place to bump on every
 release, where a stale version claim is worse than no claim.
+
+## Analytics
+
+The page loads Umami Cloud, cookieless pageviews plus the drag/copy events. Test
+traffic is kept out of those numbers with switches that are Umami's own, not a
+fork of its script:
+
+- `data-domains="vuepoint.vercel.app"` on the script tag is the main one. The
+  tracker only reports from that hostname, so localhost previews, `file://`
+  opens and `*.vercel.app` deployment URLs are all silent. This is what keeps
+  automated testing out of the stats with no per-test setup.
+- `data-do-not-track="true"` makes the tracker obey the browser's Do Not Track
+  setting. Delete the attribute if every non-test visit must count.
+- `localStorage['umami.disabled']` is a kill switch the tracker checks before
+  every send. Two ways to flip it, both in the small inline snippet above the
+  script tag: browsers driving automation (`navigator.webdriver`) set it
+  themselves, and a person testing by hand sets it by opening the live site
+  once with `?no-analytics` in the URL. `?analytics-on` turns tracking back on.
+
+So the rule of thumb: test on localhost or a preview URL and nothing is ever
+sent; if a test has to run on the real domain, use `?no-analytics` in that
+browser first. Real visitors on the real domain are unaffected - the tracker
+never sees a switch that would silence them.
 
 ## Test
 
